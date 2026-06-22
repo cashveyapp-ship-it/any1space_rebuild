@@ -1,0 +1,30 @@
+﻿workflows:
+  any1space-ios-test:
+    name: Any1Space iOS Test Build
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      vars:
+        STRIPE_PUBLISHABLE_KEY: $STRIPE_PUBLISHABLE_KEY
+    scripts:
+      - name: Disable Swift Package Manager
+        script: |
+          flutter config --no-enable-swift-package-manager
+      - name: Flutter clean and get packages
+        script: |
+          flutter clean
+          flutter pub get
+      - name: Analyze
+        script: |
+          flutter analyze
+      - name: Install iOS pods
+        script: |
+          cd ios
+          pod install
+          cd ..
+      - name: Build iOS no codesign
+        script: |
+          flutter build ios --no-codesign --dart-define=STRIPE_PUBLISHABLE_KEY=$STRIPE_PUBLISHABLE_KEY
+    artifacts:
+      - build/ios/iphoneos/Runner.app
