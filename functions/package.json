@@ -1,0 +1,14 @@
+{
+  "name": "any1space-functions",
+  "description": "Cloud Functions for Any1Space",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^6.0.0",
+    "stripe": "^17.0.0"
+  },
+  "private": true
+}

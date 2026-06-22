@@ -1,0 +1,101 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function email() {
+      return signedIn() ? request.auth.token.email.lower() : '';
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        email() in [
+          'alerttmenow@gmail.com',
+          'shieldenforcement.scanbite@yahoo.com',
+          'anthonyt_thomas@yahoo.com'
+        ];
+    }
+
+    match /users/{userId} {
+      allow read, create, update: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+
+      match /notifications/{notificationId} {
+        allow read, write, delete: if signedIn() && (request.auth.uid == userId || isAdmin());
+      }
+
+      match /savedSpaces/{spaceId} {
+        allow read, write, delete: if signedIn() && (request.auth.uid == userId || isAdmin());
+      }
+    }
+
+    match /spaces/{spaceId} {
+      allow read: if signedIn();
+      allow create, update, delete: if signedIn();
+    }
+
+    match /bookings/{bookingId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /attendants/{attendantId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /assignedSpaces/{assignmentId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /supportTickets/{ticketId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /incidents/{incidentId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /attendantShifts/{shiftId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /shiftPayments/{paymentId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /payouts/{payoutId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /payments/{paymentId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /refunds/{refundId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /notifications/{notificationId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /approvedPlates/{plateId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /accountDeletionRequests/{requestId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
+    match /adminLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
