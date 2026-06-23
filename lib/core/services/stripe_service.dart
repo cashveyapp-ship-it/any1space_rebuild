@@ -1,4 +1,5 @@
 ﻿import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -121,6 +122,14 @@ class StripeService {
   Future<Map<String, dynamic>> createAttendantShiftPaymentIntent({
     required String shiftId,
   }) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      throw Exception('Please sign in again before paying the attendant.');
+    }
+
+    await user.getIdToken(true);
+
     final callable = _functions.httpsCallable('createAttendantShiftPaymentIntent');
 
     final result = await callable.call({
@@ -179,4 +188,7 @@ class StripeService {
     return Map<String, dynamic>.from(result.data as Map);
   }
 }
+
+
+
 

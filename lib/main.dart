@@ -6,8 +6,7 @@ import 'app/app.dart';
 import 'firebase_options.dart';
 import 'core/services/push_notification_service.dart';
 import 'core/services/fcm_token_service.dart';
-//import 'package:firebase_app_check/firebase_app_check.dart';
-
+//
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -15,10 +14,7 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
- // await FirebaseAppCheck.instance.activate(
-  //  androidProvider: AndroidProvider.debug,
-  //);
-
+ // 
 
   Stripe.publishableKey = const String.fromEnvironment(
     'STRIPE_PUBLISHABLE_KEY',
@@ -37,4 +33,5 @@ Future<void> main() async {
 
   runApp(const Any1SpaceApp());
 }
+
 

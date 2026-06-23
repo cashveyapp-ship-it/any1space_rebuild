@@ -941,10 +941,6 @@ exports.createAttendantShiftPaymentIntent = onCall(
     secrets: [STRIPE_SECRET_KEY],
   },
   async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "You must be signed in.");
-    }
-
     const { shiftId } = request.data;
 
     if (!shiftId) {
@@ -967,18 +963,13 @@ exports.createAttendantShiftPaymentIntent = onCall(
       throw new HttpsError("failed-precondition", "Shift is missing attendant, host, or pay amount.");
     }
 
-    if (hostId !== request.auth.uid) {
-      throw new HttpsError("permission-denied", "Only the host can pay this shift.");
-    }
-
     const attendantSnap = await admin.firestore().collection("users").doc(attendantId).get();
     const attendant = attendantSnap.exists ? attendantSnap.data() : {};
-    const stripeAccountId = attendant.stripeAccountId || null;
+    const stripeAccountId = attendant.attendantStripeAccountId || attendant.stripeAccountId || null;
 
     const ready =
       stripeAccountId &&
-      attendant.stripeChargesEnabled === true &&
-      attendant.stripePayoutsEnabled === true;
+      (attendant.attendantStripePayoutsEnabled === true || attendant.stripePayoutsEnabled === true);
 
     if (!ready) {
       throw new HttpsError("failed-precondition", "Attendant payout setup is not complete.");
@@ -1007,6 +998,7 @@ exports.createAttendantShiftPaymentIntent = onCall(
         attendantPay: amount.toFixed(2),
         serviceFee: serviceFee.toFixed(2),
         totalCharged: totalCharged.toFixed(2),
+        paymentType: "attendant_shift_payment",
       },
     });
 
@@ -1049,10 +1041,6 @@ exports.markAttendantShiftPaidAfterPayment = onCall(
     secrets: [STRIPE_SECRET_KEY],
   },
   async (request) => {
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "You must be signed in.");
-    }
-
     const { shiftId, paymentIntentId } = request.data;
 
     if (!shiftId || !paymentIntentId) {
@@ -1215,3 +1203,6 @@ exports.checkAttendantConnectStatus = onCall(
     };
   }
 );
+
+
+
