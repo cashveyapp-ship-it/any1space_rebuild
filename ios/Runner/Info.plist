@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -45,5 +45,14 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+        <key>NSCameraUsageDescription</key>
+        <string>Any1Space uses the camera to scan QR codes for parking check-in, check-out, and attendant verification.</string>
+
+        <key>NSLocationWhenInUseUsageDescription</key>
+        <string>Any1Space uses your location to help you find nearby parking spaces and navigate to booked locations.</string>
+
+        <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+        <string>Any1Space uses location services to support parking reservations, navigation, and parking session management.</string>
 </dict>
 </plist>
+
