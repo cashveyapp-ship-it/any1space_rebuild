@@ -1206,3 +1206,189 @@ exports.checkAttendantConnectStatus = onCall(
 
 
 
+
+// -----------------------------------------------------------------------------
+// WEB ONLY: Stripe-hosted Checkout for booking payments.
+// This does not replace or modify the Android/iOS PaymentSheet functions.
+// -----------------------------------------------------------------------------
+exports.createBookingWebCheckoutSession = onCall(
+  {
+    region: "us-central1",
+    secrets: [STRIPE_SECRET_KEY],
+  },
+  async (request) => {
+    const caller = await resolveCallableUserV2(request);
+
+    const {
+      bookingId,
+      hostId,
+      amount,
+      successUrl,
+      cancelUrl,
+    } = request.data || {};
+
+    if (!bookingId || !hostId || !amount || Number(amount) <= 0) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Missing bookingId, hostId, or amount."
+      );
+    }
+
+    if (!successUrl || !cancelUrl) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Missing web successUrl or cancelUrl."
+      );
+    }
+
+    const bookingRef = admin
+      .firestore()
+      .collection("bookings")
+      .doc(bookingId);
+
+    const bookingSnap = await bookingRef.get();
+
+    if (!bookingSnap.exists) {
+      throw new HttpsError("not-found", "Booking not found.");
+    }
+
+    const booking = bookingSnap.data() || {};
+
+    if (
+      booking.driverId &&
+      booking.driverId !== caller.uid
+    ) {
+      throw new HttpsError(
+        "permission-denied",
+        "This booking belongs to another user."
+      );
+    }
+
+    const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+
+    const amountCents = Math.round(Number(amount) * 100);
+    const platformFeePercent = 20;
+    const platformFeeCents = Math.round(amountCents * 0.20);
+    const hostNetCents = amountCents - platformFeeCents;
+
+    const hostSnap = await admin
+      .firestore()
+      .collection("users")
+      .doc(hostId)
+      .get();
+
+    const host = hostSnap.exists ? hostSnap.data() : {};
+    const stripeAccountId = host.stripeAccountId || null;
+
+    const connectReady =
+      stripeAccountId &&
+      host.stripeConnectStatus === "connected" &&
+      host.stripeChargesEnabled === true &&
+      host.stripePayoutsEnabled === true;
+
+    const paymentIntentData = {
+      metadata: {
+        bookingId,
+        hostId,
+        driverId: caller.uid,
+        paymentSource: "web_checkout",
+        platformFeePercent: String(platformFeePercent),
+        platformFeeCents: String(platformFeeCents),
+        hostNetCents: String(hostNetCents),
+      },
+    };
+
+    if (connectReady) {
+      paymentIntentData.application_fee_amount = platformFeeCents;
+      paymentIntentData.transfer_data = {
+        destination: stripeAccountId,
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      customer_email: caller.email || undefined,
+      client_reference_id: bookingId,
+      success_url:
+        `${successUrl}${successUrl.includes("?") ? "&" : "?"}` +
+        "session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: cancelUrl,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: amountCents,
+            product_data: {
+              name: booking.spaceName
+                ? `Any1Space Parking - ${booking.spaceName}`
+                : "Any1Space Parking Booking",
+              description: `Booking ${bookingId}`,
+            },
+          },
+        },
+      ],
+      payment_intent_data: paymentIntentData,
+      metadata: {
+        bookingId,
+        hostId,
+        driverId: caller.uid,
+        paymentSource: "web_checkout",
+      },
+    });
+
+    if (!session.url) {
+      throw new HttpsError(
+        "internal",
+        "Stripe did not return a Checkout URL."
+      );
+    }
+
+    await bookingRef.set(
+      {
+        driverId: caller.uid,
+        hostId,
+        checkoutSessionId: session.id,
+        paymentStatus: "checkout_created",
+        paymentSource: "web_checkout",
+        platformFeePercent,
+        platformFee: platformFeeCents / 100,
+        hostNet: hostNetCents / 100,
+        stripeDestinationAccountId: connectReady
+          ? stripeAccountId
+          : null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    await admin
+      .firestore()
+      .collection("webCheckoutSessions")
+      .doc(session.id)
+      .set({
+        checkoutSessionId: session.id,
+        bookingId,
+        hostId,
+        driverId: caller.uid,
+        amount: Number(amount),
+        amountCents,
+        platformFeePercent,
+        platformFee: platformFeeCents / 100,
+        platformFeeCents,
+        hostNet: hostNetCents / 100,
+        hostNetCents,
+        stripeAccountId: connectReady ? stripeAccountId : null,
+        status: "created",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+    return {
+      url: session.url,
+      checkoutSessionId: session.id,
+      platformFee: platformFeeCents / 100,
+      hostNet: hostNetCents / 100,
+    };
+  }
+);

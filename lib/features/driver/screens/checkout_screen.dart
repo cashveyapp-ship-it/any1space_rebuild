@@ -1,18 +1,17 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/models/space_model.dart';
 import '../../../core/services/booking_service.dart';
 import '../../../core/services/stripe_service.dart';
+import '../../../core/services/stripe_web_checkout_service.dart';
 import '../../../core/widgets/apple_back_button.dart';
 import 'qr_pass_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final SpaceModel space;
 
-  const CheckoutScreen({
-    super.key,
-    required this.space,
-  });
+  const CheckoutScreen({super.key, required this.space});
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -44,22 +43,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final selectedNumber = _selectedSpaceNumber;
 
     if (plate.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a license plate.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter a license plate.')));
       return;
     }
 
     if (selectedNumber == null || selectedNumber.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a space number.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Select a space number.')));
       return;
     }
 
     if (!_acceptedLiability) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must accept the liability agreement.')),
+        const SnackBar(
+          content: Text('You must accept the liability agreement.'),
+        ),
       );
       return;
     }
@@ -67,7 +68,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (_total < 0.50) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Minimum Stripe charge is 50 cents. Please increase the parking duration or price.'),
+          content: Text(
+            'Minimum Stripe charge is 50 cents. Please increase the parking duration or price.',
+          ),
         ),
       );
       return;
@@ -76,72 +79,98 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     setState(() => _saving = true);
 
     try {
-      final bookingId = await BookingService().createPendingBooking(
-        space: widget.space,
-        licensePlate: plate,
-        amount: _total,
-        hours: _hours,
-      ).timeout(const Duration(seconds: 30));
+      final bookingId = await BookingService()
+          .createPendingBooking(
+            space: widget.space,
+            licensePlate: plate,
+            amount: _total,
+            hours: _hours,
+          )
+          .timeout(const Duration(seconds: 30));
 
-      await FirebaseFirestore.instance.collection('bookings').doc(bookingId).set({
-        'spaceNumber': selectedNumber,
-        'platformFee': _platformFee,
-        'hostPayout': _hostReceives,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      await FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(bookingId)
+          .set({
+            'spaceNumber': selectedNumber,
+            'platformFee': _platformFee,
+            'hostPayout': _hostReceives,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+      // Web uses Stripe-hosted Checkout.
+      // Android and iOS continue below with the existing PaymentSheet flow.
+      if (kIsWeb) {
+        await StripeWebCheckoutService().openBookingCheckout(
+          bookingId: bookingId,
+          hostId: widget.space.hostId,
+          amount: _total,
+        );
+        return;
+      }
 
       final stripe = StripeService();
 
-      final payment = await stripe.createBookingPaymentIntent(
-        bookingId: bookingId,
-        hostId: widget.space.hostId,
-        amount: _total,
-      ).timeout(const Duration(seconds: 45));
+      final payment = await stripe
+          .createBookingPaymentIntent(
+            bookingId: bookingId,
+            hostId: widget.space.hostId,
+            amount: _total,
+          )
+          .timeout(const Duration(seconds: 45));
 
-      await stripe.initializePaymentSheet(
-        clientSecret: payment['clientSecret'].toString(),
-      ).timeout(const Duration(seconds: 30));
+      await stripe
+          .initializePaymentSheet(
+            clientSecret: payment['clientSecret'].toString(),
+          )
+          .timeout(const Duration(seconds: 30));
 
       await stripe.presentPaymentSheet().timeout(const Duration(seconds: 120));
 
-      await stripe.markBookingPaidAfterPayment(
-        bookingId: bookingId,
-        paymentIntentId: payment['paymentIntentId'].toString(),
-      ).timeout(const Duration(seconds: 45));
+      await stripe
+          .markBookingPaidAfterPayment(
+            bookingId: bookingId,
+            paymentIntentId: payment['paymentIntentId'].toString(),
+          )
+          .timeout(const Duration(seconds: 45));
 
-      await FirebaseFirestore.instance.collection('bookings').doc(bookingId).set({
-        'status': 'paid',
-        'paymentStatus': 'paid',
-        'paymentIntentId': payment['paymentIntentId'].toString(),
-        'spaceNumber': selectedNumber,
-        'platformFee': _platformFee,
-        'hostPayout': _hostReceives,
-        'paidAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      await FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(bookingId)
+          .set({
+            'status': 'paid',
+            'paymentStatus': 'paid',
+            'paymentIntentId': payment['paymentIntentId'].toString(),
+            'spaceNumber': selectedNumber,
+            'platformFee': _platformFee,
+            'hostPayout': _hostReceives,
+            'paidAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
-      await FirebaseFirestore.instance.collection('spaces').doc(widget.space.id).set({
-        'occupiedSpaceNumbers': FieldValue.arrayUnion([selectedNumber]),
-        'availableSpaces': widget.space.availableSpaces > 0
-            ? widget.space.availableSpaces - 1
-            : 0,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      await FirebaseFirestore.instance
+          .collection('spaces')
+          .doc(widget.space.id)
+          .set({
+            'occupiedSpaceNumbers': FieldValue.arrayUnion([selectedNumber]),
+            'availableSpaces': widget.space.availableSpaces > 0
+                ? widget.space.availableSpaces - 1
+                : 0,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       if (!mounted) return;
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => QrPassScreen(bookingId: bookingId),
-        ),
+        MaterialPageRoute(builder: (_) => QrPassScreen(bookingId: bookingId)),
       );
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Booking failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Booking failed: $e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -167,7 +196,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .snapshots(),
       builder: (context, snapshot) {
         final data = snapshot.data?.data() ?? {};
-        final total = ((data['totalSpaces'] ?? widget.space.totalSpaces) as num).toInt();
+        final total = ((data['totalSpaces'] ?? widget.space.totalSpaces) as num)
+            .toInt();
 
         final numbers = List<String>.from(
           data['spaceNumbers'] ??
@@ -268,16 +298,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 padding: const EdgeInsets.all(18),
                 child: Column(
                   children: [
-                    _row('Hourly Rate', '\$${space.hourlyPrice.toStringAsFixed(2)}'),
+                    _row(
+                      'Hourly Rate',
+                      '\$${space.hourlyPrice.toStringAsFixed(2)}',
+                    ),
                     _row('Hours', _hours.toString()),
                     _row(
                       'Space Number',
-                      _selectedSpaceNumber == null ? 'Not selected' : '#$_selectedSpaceNumber',
+                      _selectedSpaceNumber == null
+                          ? 'Not selected'
+                          : '#$_selectedSpaceNumber',
                     ),
                     const Divider(),
                     _row('Driver Pays', '\$${_total.toStringAsFixed(2)}'),
-                    _row('Any1Space 20%', '\$${_platformFee.toStringAsFixed(2)}'),
-                    _row('Host Receives', '\$${_hostReceives.toStringAsFixed(2)}'),
+                    _row(
+                      'Any1Space 20%',
+                      '\$${_platformFee.toStringAsFixed(2)}',
+                    ),
+                    _row(
+                      'Host Receives',
+                      '\$${_hostReceives.toStringAsFixed(2)}',
+                    ),
                   ],
                 ),
               ),
@@ -299,7 +340,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 onPressed: _saving ? null : _continueBooking,
                 icon: const Icon(Icons.payment_rounded),
                 label: FittedBox(
-                  child: Text(_saving ? 'Processing...' : 'Pay & Create QR Pass'),
+                  child: Text(
+                    _saving ? 'Processing...' : 'Pay & Create QR Pass',
+                  ),
                 ),
               ),
             ),

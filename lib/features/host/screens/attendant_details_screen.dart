@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/widgets/apple_back_button.dart';
 import '../../../core/services/stripe_service.dart';
@@ -55,6 +56,25 @@ class AttendantDetailsScreen extends StatelessWidget {
     return '\$${amount.toStringAsFixed(2)}';
   }
 
+  String _friendlyPaymentError(Object e) {
+    if (e is FirebaseFunctionsException) {
+      switch (e.code) {
+        case 'failed-precondition':
+          return 'This attendant has not set up their payout account yet. Ask them to complete Stripe setup in their Profile.';
+        case 'not-found':
+          return 'Shift not found. Please refresh and try again.';
+        case 'invalid-argument':
+          return 'Invalid shift data. Please check the shift details and try again.';
+        case 'unauthenticated':
+          return 'You must be signed in to process payments.';
+        case 'internal':
+          return 'Payment service error. Please try again in a moment.';
+        default:
+          return e.message ?? 'Payment failed (${e.code}). Please try again.';
+      }
+    }
+    return 'Payment failed. Please check your connection and try again.';
+  }
 
   Future<void> _payShiftInApp(BuildContext context, String shiftId) async {
     try {
@@ -82,10 +102,14 @@ class AttendantDetailsScreen extends StatelessWidget {
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Attendant payment failed: $e')),
+        SnackBar(
+          content: Text(_friendlyPaymentError(e)),
+          duration: const Duration(seconds: 5),
+        ),
       );
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -220,13 +244,38 @@ class AttendantDetailsScreen extends StatelessWidget {
                                 ),
                                 subtitle: Text(
                                   'Started: ${_time(shift['startedAt'])}\n'
-                                  'Ended: ${_time(shift['endedAt'])}\n'
-                                  'Hours: ${hours.toStringAsFixed(2)} x ${_money(shift['hourlyRate'])}/hr\n'
-                                  'Amount Due: ${_money(pay)}\n'
-                                  'Payment: $paymentStatus',
+                                      'Ended: ${_time(shift['endedAt'])}\n'
+                                      'Hours: ${hours.toStringAsFixed(2)} x ${_money(shift['hourlyRate'])}/hr\n'
+                                      'Amount Due: ${_money(pay)}\n'
+                                      'Payment: $paymentStatus',
                                 ),
                               ),
                               const SizedBox(height: 8),
+
+                              // Show warning if attendant payout not set up
+                              if (paymentStatus == 'pendingHostReview')
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFF8E1),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFFFFCC02)),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.warning_amber_rounded, color: Color(0xFFFF9800), size: 18),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'If paying in-app, the attendant must first complete Stripe payout setup in their Profile.',
+                                          style: TextStyle(fontSize: 12, color: Color(0xFF5D4037)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
@@ -236,7 +285,6 @@ class AttendantDetailsScreen extends StatelessWidget {
                                     icon: const Icon(Icons.handshake_rounded),
                                     label: const Text('Pay Outside App'),
                                   ),
-
                                   FilledButton.icon(
                                     onPressed: () => _payShiftInApp(context, doc.id),
                                     icon: const Icon(Icons.credit_card_rounded),
@@ -288,5 +336,3 @@ class AttendantDetailsScreen extends StatelessWidget {
     );
   }
 }
-
-
