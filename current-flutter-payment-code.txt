@@ -1,0 +1,1069 @@
+﻿
+  lib\core\services\access_control_service.dart:27:    }, SetOptions(merge: true));
+  lib\core\services\access_control_service.dart:28:  }
+  lib\core\services\access_control_service.dart:29:
+  lib\core\services\access_control_service.dart:30:  Future<void> createApprovedPlateRecord({
+> lib\core\services\access_control_service.dart:31:    required String bookingId,
+  lib\core\services\access_control_service.dart:32:    required Map<String, dynamic> booking,
+  lib\core\services\access_control_service.dart:33:  }) async {
+  lib\core\services\access_control_service.dart:34:    final spaceId = (booking['spaceId'] ?? 
+'').toString();
+  lib\core\services\access_control_service.dart:35:    final plate = (booking['licensePlate'] ?? 
+'').toString().trim().toUpperCase();
+  lib\core\services\access_control_service.dart:36:
+  lib\core\services\access_control_service.dart:37:    if (spaceId.isEmpty || plate.isEmpty) return;
+  lib\core\services\access_control_service.dart:38:
+> lib\core\services\access_control_service.dart:39:    await 
+_db.collection('approvedPlates').doc(bookingId).set({
+> lib\core\services\access_control_service.dart:40:      'bookingId': bookingId,
+  lib\core\services\access_control_service.dart:41:      'hostId': booking['hostId'] ?? '',
+  lib\core\services\access_control_service.dart:42:      'driverId': booking['driverId'] ?? '',
+  lib\core\services\access_control_service.dart:43:      'spaceId': spaceId,
+  lib\core\services\access_control_service.dart:44:      'spaceName': booking['spaceName'] ?? '',
+  lib\core\services\access_control_service.dart:45:      'licensePlate': plate,
+  lib\core\services\access_control_service.dart:46:      'startTime': booking['startTime'],
+  lib\core\services\access_control_service.dart:47:      'endTime': booking['endTime'],
+  lib\core\services\access_control_service.dart:48:      'status': 'approved',
+  lib\core\services\access_control_service.dart:49:      'source': 'any1space_booking',
+  lib\core\services\access_control_service.dart:50:      'any1spaceRole': 'facilitator_only',
+  lib\core\services\access_control_service.dart:51:      'createdAt': FieldValue.serverTimestamp(),
+  lib\core\services\access_control_service.dart:52:      'updatedAt': FieldValue.serverTimestamp(),
+  lib\core\services\access_control_service.dart:53:    }, SetOptions(merge: true));
+  lib\core\services\access_control_service.dart:54:  }
+  lib\core\services\booking_service.dart:71:
+  lib\core\services\booking_service.dart:72:    return doc.id;
+  lib\core\services\booking_service.dart:73:  }
+  lib\core\services\booking_service.dart:74:
+> lib\core\services\booking_service.dart:75:  Future<void> checkIn(String bookingId) async {
+> lib\core\services\booking_service.dart:76:    await _db.collection('bookings').doc(bookingId).set({
+  lib\core\services\booking_service.dart:77:      'status': 'checkedIn',
+  lib\core\services\booking_service.dart:78:      'checkedInAt': FieldValue.serverTimestamp(),
+  lib\core\services\booking_service.dart:79:      'updatedAt': FieldValue.serverTimestamp(),
+  lib\core\services\booking_service.dart:80:    }, SetOptions(merge: true));
+  lib\core\services\booking_service.dart:81:  }
+  lib\core\services\booking_service.dart:82:
+> lib\core\services\booking_service.dart:83:  Future<void> checkOut(String bookingId) async {
+> lib\core\services\booking_service.dart:84:    final bookingRef = 
+_db.collection('bookings').doc(bookingId);
+  lib\core\services\booking_service.dart:85:
+  lib\core\services\booking_service.dart:86:    await _db.runTransaction((tx) async {
+  lib\core\services\booking_service.dart:87:      final snap = await tx.get(bookingRef);
+  lib\core\services\booking_service.dart:88:      final data = snap.data() ?? {};
+  lib\core\services\booking_service.dart:89:
+  lib\core\services\booking_service.dart:90:      final spaceId = (data['spaceId'] ?? '').toString();
+  lib\core\services\booking_service.dart:91:      final number = (data['spaceNumber'] ?? '').toString();
+  lib\core\services\booking_service.dart:92:
+  lib\core\services\booking_service.dart:93:      tx.set(bookingRef, {
+  lib\core\services\booking_service.dart:94:        'status': 'checkedOut',
+  lib\core\services\booking_service.dart:95:        'checkedOutAt': FieldValue.serverTimestamp(),
+  lib\core\services\booking_service.dart:96:        'updatedAt': FieldValue.serverTimestamp(),
+  lib\core\services\booking_service.dart:97:      }, SetOptions(merge: true));
+  lib\core\services\booking_service.dart:98:
+  lib\core\services\booking_service.dart:105:      }
+  lib\core\services\booking_service.dart:106:    });
+  lib\core\services\booking_service.dart:107:  }
+  lib\core\services\booking_service.dart:108:
+> lib\core\services\booking_service.dart:109:  Future<void> cancelBooking(String bookingId) async {
+> lib\core\services\booking_service.dart:110:    await _db.collection('bookings').doc(bookingId).set({
+  lib\core\services\booking_service.dart:111:      'status': 'cancelled',
+  lib\core\services\booking_service.dart:112:      'paymentStatus': 'cancelled',
+  lib\core\services\booking_service.dart:113:      'cancelledAt': FieldValue.serverTimestamp(),
+  lib\core\services\booking_service.dart:114:      'updatedAt': FieldValue.serverTimestamp(),
+  lib\core\services\booking_service.dart:115:    }, SetOptions(merge: true));
+  lib\core\services\booking_service.dart:116:  }
+  lib\core\services\booking_service.dart:117:}
+  lib\core\services\check_in_service.dart:3:
+  lib\core\services\check_in_service.dart:4:class CheckInService {
+  lib\core\services\check_in_service.dart:5:  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  lib\core\services\check_in_service.dart:6:
+> lib\core\services\check_in_service.dart:7:  String bookingIdFromQr(String raw) {
+  lib\core\services\check_in_service.dart:8:    final value = raw.trim();
+  lib\core\services\check_in_service.dart:9:
+  lib\core\services\check_in_service.dart:10:    if (value.startsWith('ANY1SPACE_BOOKING:')) {
+  lib\core\services\check_in_service.dart:11:      return value.replaceFirst('ANY1SPACE_BOOKING:', 
+'').trim();
+  lib\core\services\check_in_service.dart:12:    }
+  lib\core\services\check_in_service.dart:13:
+  lib\core\services\check_in_service.dart:14:    if (value.startsWith('ANY1SPACE-')) {
+  lib\core\services\check_in_service.dart:15:      return value.replaceFirst('ANY1SPACE-', '').trim();
+  lib\core\services\check_in_service.dart:16:    }
+  lib\core\services\check_in_service.dart:17:
+  lib\core\services\check_in_service.dart:18:    return value;
+  lib\core\services\check_in_service.dart:19:  }
+  lib\core\services\check_in_service.dart:20:
+  lib\core\services\check_in_service.dart:21:  Future<DocumentSnapshot<Map<String, dynamic>>> 
+getBookingFromQr(String raw) async {
+> lib\core\services\check_in_service.dart:22:    final bookingId = bookingIdFromQr(raw);
+  lib\core\services\check_in_service.dart:23:
+> lib\core\services\check_in_service.dart:24:    if (bookingId.isEmpty) {
+  lib\core\services\check_in_service.dart:25:      throw Exception('Invalid QR code.');
+  lib\core\services\check_in_service.dart:26:    }
+  lib\core\services\check_in_service.dart:27:
+> lib\core\services\check_in_service.dart:28:    final snap = await 
+_db.collection('bookings').doc(bookingId).get();
+  lib\core\services\check_in_service.dart:29:
+  lib\core\services\check_in_service.dart:30:    if (!snap.exists) {
+  lib\core\services\check_in_service.dart:31:      throw Exception('Booking not found.');
+  lib\core\services\check_in_service.dart:32:    }
+  lib\core\services\check_in_service.dart:33:
+  lib\core\services\check_in_service.dart:34:    return snap;
+  lib\core\services\check_in_service.dart:35:  }
+  lib\core\services\check_in_service.dart:36:
+> lib\core\services\check_in_service.dart:37:  Future<void> checkIn(String bookingId) async {
+  lib\core\services\check_in_service.dart:38:    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+  lib\core\services\check_in_service.dart:39:
+> lib\core\services\check_in_service.dart:40:    await _db.collection('bookings').doc(bookingId).set({
+  lib\core\services\check_in_service.dart:41:      'status': 'checkedIn',
+  lib\core\services\check_in_service.dart:42:      'checkedInAt': FieldValue.serverTimestamp(),
+  lib\core\services\check_in_service.dart:43:      'checkedInBy': uid,
+  lib\core\services\check_in_service.dart:44:      'updatedAt': FieldValue.serverTimestamp(),
+  lib\core\services\check_in_service.dart:45:    }, SetOptions(merge: true));
+  lib\core\services\check_in_service.dart:46:  }
+  lib\core\services\check_in_service.dart:47:
+> lib\core\services\check_in_service.dart:48:  Future<void> checkOut(String bookingId) async {
+  lib\core\services\check_in_service.dart:49:    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+  lib\core\services\check_in_service.dart:50:
+> lib\core\services\check_in_service.dart:51:    await _db.collection('bookings').doc(bookingId).set({
+  lib\core\services\check_in_service.dart:52:      'status': 'checkedOut',
+  lib\core\services\check_in_service.dart:53:      'checkedOutAt': FieldValue.serverTimestamp(),
+  lib\core\services\check_in_service.dart:54:      'checkedOutBy': uid,
+  lib\core\services\check_in_service.dart:55:      'updatedAt': FieldValue.serverTimestamp(),
+  lib\core\services\check_in_service.dart:56:    }, SetOptions(merge: true));
+  lib\core\services\check_in_service.dart:57:  }
+  lib\core\services\check_in_service.dart:58:}
+  lib\core\services\reminder_service.dart:2:import 'package:firebase_auth/firebase_auth.dart';
+  lib\core\services\reminder_service.dart:3:
+  lib\core\services\reminder_service.dart:4:class ReminderService {
+  lib\core\services\reminder_service.dart:5:  Future<void> sendBookingReminder({
+> lib\core\services\reminder_service.dart:6:    required String bookingId,
+  lib\core\services\reminder_service.dart:7:    required Map<String, dynamic> booking,
+  lib\core\services\reminder_service.dart:8:  }) async {
+  lib\core\services\reminder_service.dart:9:    final host = FirebaseAuth.instance.currentUser;
+  lib\core\services\reminder_service.dart:10:    final driverId = (booking['driverId'] ?? '').toString();
+  lib\core\services\reminder_service.dart:11:
+  lib\core\services\reminder_service.dart:12:    if (driverId.isEmpty) {
+  lib\core\services\reminder_service.dart:13:      throw Exception('Driver ID missing on booking.');
+  lib\core\services\reminder_service.dart:14:    }
+  lib\core\services\reminder_service.dart:15:
+  lib\core\services\reminder_service.dart:16:    final spaceName = (booking['spaceName'] ?? 'your parking 
+space').toString();
+  lib\core\services\reminder_service.dart:17:    final plate = (booking['licensePlate'] ?? '').toString();
+  lib\core\services\reminder_service.dart:18:
+  lib\core\services\reminder_service.dart:19:    final body =
+  lib\core\services\reminder_service.dart:20:        'Reminder from host: Your Any1Space booking for 
+$spaceName is active. Please check in when you arrive. Plate: $plate';
+  lib\core\services\reminder_service.dart:25:      'type': 'bookingReminder',
+  lib\core\services\reminder_service.dart:26:      'title': 'Booking Reminder',
+  lib\core\services\reminder_service.dart:27:      'body': body,
+  lib\core\services\reminder_service.dart:28:      'message': body,
+> lib\core\services\reminder_service.dart:29:      'bookingId': bookingId,
+  lib\core\services\reminder_service.dart:30:      'spaceId': booking['spaceId'] ?? '',
+  lib\core\services\reminder_service.dart:31:      'spaceName': spaceName,
+  lib\core\services\reminder_service.dart:32:      'hostId': host?.uid ?? booking['hostId'] ?? '',
+  lib\core\services\reminder_service.dart:33:      'read': false,
+  lib\core\services\reminder_service.dart:34:      'createdAt': FieldValue.serverTimestamp(),
+  lib\core\services\reminder_service.dart:35:      'updatedAt': FieldValue.serverTimestamp(),
+  lib\core\services\reminder_service.dart:36:    };
+  lib\core\services\reminder_service.dart:37:
+  lib\core\services\reminder_service.dart:38:    await FirebaseFirestore.instance
+  lib\core\services\reminder_service.dart:39:        .collection('users')
+  lib\core\services\reminder_service.dart:40:        .doc(driverId)
+  lib\core\services\reminder_service.dart:41:        .collection('notifications')
+  lib\core\services\reminder_service.dart:42:        .add(notification);
+  lib\core\services\reminder_service.dart:43:
+  lib\core\services\reminder_service.dart:44:    await 
+FirebaseFirestore.instance.collection('notifications').add(notification);
+  lib\core\services\reminder_service.dart:45:
+> lib\core\services\reminder_service.dart:46:    await 
+FirebaseFirestore.instance.collection('bookings').doc(bookingId).set({
+  lib\core\services\reminder_service.dart:47:      'lastReminderAt': FieldValue.serverTimestamp(),
+  lib\core\services\reminder_service.dart:48:      'lastReminderBy': host?.uid ?? '',
+  lib\core\services\reminder_service.dart:49:      'updatedAt': FieldValue.serverTimestamp(),
+  lib\core\services\reminder_service.dart:50:    }, SetOptions(merge: true));
+  lib\core\services\reminder_service.dart:51:  }
+  lib\core\services\reminder_service.dart:52:}
+  lib\core\services\stripe_service.dart:7:class StripeService {
+  lib\core\services\stripe_service.dart:8:  final FirebaseFunctions _functions =
+  lib\core\services\stripe_service.dart:9:      FirebaseFunctions.instanceFor(region: 'us-central1');
+  lib\core\services\stripe_service.dart:10:
+> lib\core\services\stripe_service.dart:11:  Future<Map<String, dynamic>> createBookingPaymentIntent({
+> lib\core\services\stripe_service.dart:12:    required String bookingId,
+  lib\core\services\stripe_service.dart:13:    required String hostId,
+  lib\core\services\stripe_service.dart:14:    required double amount,
+  lib\core\services\stripe_service.dart:15:  }) async {
+> lib\core\services\stripe_service.dart:16:    final callable = 
+_functions.httpsCallable('createBookingPaymentIntentV2');
+  lib\core\services\stripe_service.dart:17:
+  lib\core\services\stripe_service.dart:18:    final result = await callable.call({
+> lib\core\services\stripe_service.dart:19:      'bookingId': bookingId,
+  lib\core\services\stripe_service.dart:20:      'hostId': hostId,
+  lib\core\services\stripe_service.dart:21:      'amount': amount,
+  lib\core\services\stripe_service.dart:22:    });
+  lib\core\services\stripe_service.dart:23:
+  lib\core\services\stripe_service.dart:24:    return Map<String, dynamic>.from(result.data as Map);
+  lib\core\services\stripe_service.dart:25:  }
+  lib\core\services\stripe_service.dart:26:
+  lib\core\services\stripe_service.dart:27:  Future<void> initializePaymentSheet({
+> lib\core\services\stripe_service.dart:28:    required String clientSecret,
+  lib\core\services\stripe_service.dart:29:  }) async {
+> lib\core\services\stripe_service.dart:30:    await Stripe.instance.initPaymentSheet(
+  lib\core\services\stripe_service.dart:31:      paymentSheetParameters: SetupPaymentSheetParameters(
+> lib\core\services\stripe_service.dart:32:        paymentIntentClientSecret: clientSecret,
+  lib\core\services\stripe_service.dart:33:        merchantDisplayName: 'Any1Space',
+  lib\core\services\stripe_service.dart:34:        style: ThemeMode.system,
+  lib\core\services\stripe_service.dart:35:      ),
+  lib\core\services\stripe_service.dart:36:    );
+  lib\core\services\stripe_service.dart:37:  }
+  lib\core\services\stripe_service.dart:38:
+> lib\core\services\stripe_service.dart:39:  Future<void> presentPaymentSheet() async {
+> lib\core\services\stripe_service.dart:40:    await Stripe.instance.presentPaymentSheet();
+  lib\core\services\stripe_service.dart:41:  }
+  lib\core\services\stripe_service.dart:42:
+  lib\core\services\stripe_service.dart:43:  Future<void> markBookingPaidAfterPayment({
+> lib\core\services\stripe_service.dart:44:    required String bookingId,
+> lib\core\services\stripe_service.dart:45:    required String paymentIntentId,
+  lib\core\services\stripe_service.dart:46:  }) async {
+  lib\core\services\stripe_service.dart:47:    final callable = 
+_functions.httpsCallable('markBookingPaidAfterPaymentV2');
+  lib\core\services\stripe_service.dart:48:
+  lib\core\services\stripe_service.dart:49:    await callable.call({
+> lib\core\services\stripe_service.dart:50:      'bookingId': bookingId,
+> lib\core\services\stripe_service.dart:51:      'paymentIntentId': paymentIntentId,
+  lib\core\services\stripe_service.dart:52:    });
+  lib\core\services\stripe_service.dart:53:  }
+  lib\core\services\stripe_service.dart:54:
+  lib\core\services\stripe_service.dart:55:  Future<void> refundBookingPayment({
+> lib\core\services\stripe_service.dart:56:    required String bookingId,
+  lib\core\services\stripe_service.dart:57:  }) async {
+  lib\core\services\stripe_service.dart:58:    final callable = 
+_functions.httpsCallable('refundBookingPayment');
+  lib\core\services\stripe_service.dart:59:
+  lib\core\services\stripe_service.dart:60:    await callable.call({
+> lib\core\services\stripe_service.dart:61:      'bookingId': bookingId,
+  lib\core\services\stripe_service.dart:62:    });
+  lib\core\services\stripe_service.dart:63:  }
+  lib\core\services\stripe_service.dart:64:
+  lib\core\services\stripe_service.dart:65:  Future<void> sendBookingReminder({
+> lib\core\services\stripe_service.dart:66:    required String bookingId,
+  lib\core\services\stripe_service.dart:67:  }) async {
+  lib\core\services\stripe_service.dart:68:    final callable = 
+_functions.httpsCallable('sendBookingReminder');
+  lib\core\services\stripe_service.dart:69:
+  lib\core\services\stripe_service.dart:70:    await callable.call({
+> lib\core\services\stripe_service.dart:71:      'bookingId': bookingId,
+  lib\core\services\stripe_service.dart:72:    });
+  lib\core\services\stripe_service.dart:73:  }
+  lib\core\services\stripe_service.dart:74:
+  lib\core\services\stripe_service.dart:75:  Future<String> createStripeConnectAccount() async {
+  lib\core\services\stripe_service.dart:76:    final callable = 
+_functions.httpsCallable('createStripeConnectAccount');
+  lib\core\services\stripe_service.dart:77:    final result = await callable.call();
+  lib\core\services\stripe_service.dart:78:
+  lib\core\services\stripe_service.dart:79:    final data = Map<String, dynamic>.from(result.data as Map);
+  lib\core\services\stripe_service.dart:80:    return data['accountId']?.toString() ?? '';
+  lib\core\services\stripe_service.dart:81:  }
+  lib\core\services\stripe_service.dart:82:
+  lib\core\services\stripe_service.dart:83:  Future<String> createHostConnectOnboardingLink() async {
+  lib\core\services\stripe_service.dart:84:    final callable =
+  lib\core\services\stripe_service.dart:85:        
+_functions.httpsCallable('createHostConnectOnboardingLink');
+  lib\core\services\stripe_service.dart:118:
+  lib\core\services\stripe_service.dart:119:    if (result.data == null) return {};
+  lib\core\services\stripe_service.dart:120:    return Map<String, dynamic>.from(result.data as Map);
+  lib\core\services\stripe_service.dart:121:  }
+> lib\core\services\stripe_service.dart:122:  Future<Map<String, dynamic>> 
+createAttendantShiftPaymentIntent({
+  lib\core\services\stripe_service.dart:123:    required String shiftId,
+  lib\core\services\stripe_service.dart:124:  }) async {
+  lib\core\services\stripe_service.dart:125:    final user = FirebaseAuth.instance.currentUser;
+  lib\core\services\stripe_service.dart:126:
+  lib\core\services\stripe_service.dart:127:    if (user == null) {
+  lib\core\services\stripe_service.dart:128:      throw Exception('Please sign in again before paying the 
+attendant.');
+  lib\core\services\stripe_service.dart:129:    }
+  lib\core\services\stripe_service.dart:130:
+  lib\core\services\stripe_service.dart:131:    await user.getIdToken(true);
+  lib\core\services\stripe_service.dart:132:
+> lib\core\services\stripe_service.dart:133:    final callable = 
+_functions.httpsCallable('createAttendantShiftPaymentIntent');
+  lib\core\services\stripe_service.dart:134:
+  lib\core\services\stripe_service.dart:135:    final result = await callable.call({
+  lib\core\services\stripe_service.dart:136:      'shiftId': shiftId,
+  lib\core\services\stripe_service.dart:137:    });
+  lib\core\services\stripe_service.dart:138:
+  lib\core\services\stripe_service.dart:139:    return Map<String, dynamic>.from(result.data as Map);
+  lib\core\services\stripe_service.dart:140:  }
+  lib\core\services\stripe_service.dart:141:
+  lib\core\services\stripe_service.dart:142:  Future<void> markAttendantShiftPaidAfterPayment({
+  lib\core\services\stripe_service.dart:143:    required String shiftId,
+> lib\core\services\stripe_service.dart:144:    required String paymentIntentId,
+  lib\core\services\stripe_service.dart:145:  }) async {
+  lib\core\services\stripe_service.dart:146:    final callable = 
+_functions.httpsCallable('markAttendantShiftPaidAfterPayment');
+  lib\core\services\stripe_service.dart:147:
+  lib\core\services\stripe_service.dart:148:    await callable.call({
+  lib\core\services\stripe_service.dart:149:      'shiftId': shiftId,
+> lib\core\services\stripe_service.dart:150:      'paymentIntentId': paymentIntentId,
+  lib\core\services\stripe_service.dart:151:    });
+  lib\core\services\stripe_service.dart:152:  }
+  lib\core\services\stripe_service.dart:153:
+  lib\core\services\stripe_service.dart:154:
+  lib\core\services\stripe_service.dart:155:  Future<String> createAttendantConnectAccount() async {
+  lib\core\services\stripe_service.dart:156:    final callable = 
+_functions.httpsCallable('createAttendantConnectAccount');
+  lib\core\services\stripe_service.dart:157:    final result = await callable.call();
+  lib\core\services\stripe_service.dart:158:
+  lib\core\services\stripe_service.dart:159:    final data = Map<String, dynamic>.from(result.data as 
+Map);
+  lib\core\services\stripe_service.dart:160:    return data['accountId']?.toString() ?? '';
+  lib\core\services\stripe_service.dart:161:  }
+  lib\core\services\stripe_service.dart:162:
+  lib\core\services\stripe_service.dart:163:  Future<String> createAttendantConnectOnboardingLink() async 
+{
+  lib\core\services\stripe_service.dart:164:    final callable = 
+_functions.httpsCallable('createAttendantConnectOnboardingLink');
+  lib\features\admin\screens\admin_bookings_screen.dart:66:                      if (v == 'view') {
+  lib\features\admin\screens\admin_bookings_screen.dart:67:                        Navigator.push(
+  lib\features\admin\screens\admin_bookings_screen.dart:68:                          context,
+  lib\features\admin\screens\admin_bookings_screen.dart:69:                          MaterialPageRoute(
+> lib\features\admin\screens\admin_bookings_screen.dart:70:                            builder: (_) => 
+BookingDetailsScreen(bookingId: doc.id),
+  lib\features\admin\screens\admin_bookings_screen.dart:71:                          ),
+  lib\features\admin\screens\admin_bookings_screen.dart:72:                        );
+  lib\features\admin\screens\admin_bookings_screen.dart:73:                      } else {
+  lib\features\admin\screens\admin_bookings_screen.dart:74:                        _setStatus(doc.id, v);
+  lib\features\admin\screens\admin_bookings_screen.dart:75:                      }
+  lib\features\admin\screens\admin_bookings_screen.dart:76:                    },
+  lib\features\admin\screens\admin_bookings_screen.dart:77:                    itemBuilder: (_) => const [
+  lib\features\admin\screens\admin_bookings_screen.dart:78:                      PopupMenuItem(value: 
+'view', child: Text('View Details')),
+  lib\features\admin\screens\admin_bookings_screen.dart:79:                      PopupMenuItem(value: 
+'paid', child: Text('Mark Paid')),
+  lib\features\admin\screens\admin_bookings_screen.dart:80:                      PopupMenuItem(value: 
+'checkedIn', child: Text('Checked In')),
+  lib\features\admin\screens\admin_bookings_screen.dart:81:                      PopupMenuItem(value: 
+'checkedOut', child: Text('Checked Out')),
+  lib\features\admin\screens\admin_bookings_screen.dart:82:                      PopupMenuItem(value: 
+'cancelled', child: Text('Cancelled')),
+  lib\features\admin\screens\admin_bookings_screen.dart:83:                      PopupMenuItem(value: 
+'refunded', child: Text('Refunded')),
+  lib\features\admin\screens\admin_bookings_screen.dart:84:                    ],
+  lib\features\attendant\screens\booking_check_in_screen.dart:3:import 
+'../../../core/services/check_in_service.dart';
+  lib\features\attendant\screens\booking_check_in_screen.dart:4:import 
+'../../../core/widgets/apple_back_button.dart';
+  lib\features\attendant\screens\booking_check_in_screen.dart:5:
+  lib\features\attendant\screens\booking_check_in_screen.dart:6:class BookingCheckInScreen extends 
+StatefulWidget {
+> lib\features\attendant\screens\booking_check_in_screen.dart:7:  final String bookingId;
+  lib\features\attendant\screens\booking_check_in_screen.dart:8:
+  lib\features\attendant\screens\booking_check_in_screen.dart:9:  const BookingCheckInScreen({
+  lib\features\attendant\screens\booking_check_in_screen.dart:10:    super.key,
+> lib\features\attendant\screens\booking_check_in_screen.dart:11:    required this.bookingId,
+  lib\features\attendant\screens\booking_check_in_screen.dart:12:  });
+  lib\features\attendant\screens\booking_check_in_screen.dart:13:
+  lib\features\attendant\screens\booking_check_in_screen.dart:14:  @override
+  lib\features\attendant\screens\booking_check_in_screen.dart:15:  State<BookingCheckInScreen> 
+createState() => _BookingCheckInScreenState();
+  lib\features\attendant\screens\booking_check_in_screen.dart:16:}
+  lib\features\attendant\screens\booking_check_in_screen.dart:17:
+  lib\features\attendant\screens\booking_check_in_screen.dart:18:class _BookingCheckInScreenState extends 
+State<BookingCheckInScreen> {
+  lib\features\attendant\screens\booking_check_in_screen.dart:19:  bool _saving = false;
+  lib\features\attendant\screens\booking_check_in_screen.dart:20:
+  lib\features\attendant\screens\booking_check_in_screen.dart:21:  Future<void> _checkIn() async {
+  lib\features\attendant\screens\booking_check_in_screen.dart:22:    setState(() => _saving = true);
+  lib\features\attendant\screens\booking_check_in_screen.dart:23:
+  lib\features\attendant\screens\booking_check_in_screen.dart:24:    try {
+> lib\features\attendant\screens\booking_check_in_screen.dart:25:      await 
+CheckInService().checkIn(widget.bookingId);
+  lib\features\attendant\screens\booking_check_in_screen.dart:26:
+  lib\features\attendant\screens\booking_check_in_screen.dart:27:      if (!mounted) return;
+  lib\features\attendant\screens\booking_check_in_screen.dart:28:
+  lib\features\attendant\screens\booking_check_in_screen.dart:29:      
+ScaffoldMessenger.of(context).showSnackBar(
+  lib\features\attendant\screens\booking_check_in_screen.dart:30:        const SnackBar(content: 
+Text('Vehicle checked in.')),
+  lib\features\attendant\screens\booking_check_in_screen.dart:31:      );
+  lib\features\attendant\screens\booking_check_in_screen.dart:32:    } finally {
+  lib\features\attendant\screens\booking_check_in_screen.dart:33:      if (mounted) setState(() => 
+_saving = false);
+  lib\features\attendant\screens\booking_check_in_screen.dart:34:    }
+  lib\features\attendant\screens\booking_check_in_screen.dart:35:  }
+  lib\features\attendant\screens\booking_check_in_screen.dart:36:
+  lib\features\attendant\screens\booking_check_in_screen.dart:37:  Future<void> _checkOut() async {
+  lib\features\attendant\screens\booking_check_in_screen.dart:38:    setState(() => _saving = true);
+  lib\features\attendant\screens\booking_check_in_screen.dart:39:
+  lib\features\attendant\screens\booking_check_in_screen.dart:40:    try {
+> lib\features\attendant\screens\booking_check_in_screen.dart:41:      await 
+CheckInService().checkOut(widget.bookingId);
+  lib\features\attendant\screens\booking_check_in_screen.dart:42:
+  lib\features\attendant\screens\booking_check_in_screen.dart:43:      if (!mounted) return;
+  lib\features\attendant\screens\booking_check_in_screen.dart:44:
+  lib\features\attendant\screens\booking_check_in_screen.dart:45:      
+ScaffoldMessenger.of(context).showSnackBar(
+  lib\features\attendant\screens\booking_check_in_screen.dart:46:        const SnackBar(content: 
+Text('Vehicle checked out.')),
+  lib\features\attendant\screens\booking_check_in_screen.dart:47:      );
+  lib\features\attendant\screens\booking_check_in_screen.dart:48:    } finally {
+  lib\features\attendant\screens\booking_check_in_screen.dart:49:      if (mounted) setState(() => 
+_saving = false);
+  lib\features\attendant\screens\booking_check_in_screen.dart:50:    }
+  lib\features\attendant\screens\booking_check_in_screen.dart:51:  }
+  lib\features\attendant\screens\booking_check_in_screen.dart:52:
+  lib\features\attendant\screens\booking_check_in_screen.dart:53:  String _time(dynamic value) {
+  lib\features\attendant\screens\booking_check_in_screen.dart:54:    if (value is! Timestamp) return 'Not 
+set';
+  lib\features\attendant\screens\booking_check_in_screen.dart:55:    final dt = value.toDate();
+  lib\features\attendant\screens\booking_check_in_screen.dart:87:      body: SafeArea(
+  lib\features\attendant\screens\booking_check_in_screen.dart:88:        child: 
+StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+  lib\features\attendant\screens\booking_check_in_screen.dart:89:          stream: 
+FirebaseFirestore.instance
+  lib\features\attendant\screens\booking_check_in_screen.dart:90:              .collection('bookings')
+> lib\features\attendant\screens\booking_check_in_screen.dart:91:              .doc(widget.bookingId)
+  lib\features\attendant\screens\booking_check_in_screen.dart:92:              .snapshots(),
+  lib\features\attendant\screens\booking_check_in_screen.dart:93:          builder: (context, snapshot) {
+  lib\features\attendant\screens\booking_check_in_screen.dart:94:            if (snapshot.hasError) 
+return Center(child: Text('Error: ${snapshot.error}'));
+  lib\features\attendant\screens\booking_check_in_screen.dart:95:            if (!snapshot.hasData) 
+return const Center(child: CircularProgressIndicator());
+  lib\features\attendant\screens\booking_check_in_screen.dart:96:
+  lib\features\attendant\screens\booking_check_in_screen.dart:97:            if (!snapshot.data!.exists) {
+  lib\features\attendant\screens\booking_check_in_screen.dart:98:              return const Center(child: 
+Text('Booking not found.'));
+  lib\features\attendant\screens\booking_check_in_screen.dart:99:            }
+  lib\features\attendant\screens\booking_check_in_screen.dart:100:
+  lib\features\attendant\screens\booking_check_in_screen.dart:101:            final data = 
+snapshot.data!.data() ?? {};
+  lib\features\attendant\screens\booking_check_in_screen.dart:102:            final status = 
+(data['status'] ?? '').toString();
+  lib\features\attendant\screens\booking_check_in_screen.dart:103:
+  lib\features\attendant\screens\booking_check_in_screen.dart:104:            return ListView(
+  lib\features\attendant\screens\booking_check_in_screen.dart:105:              padding: 
+EdgeInsets.fromLTRB(18, compact ? 14 : 22, 18, 28),
+  lib\features\attendant\screens\booking_check_in_screen.dart:114:                  ),
+  lib\features\attendant\screens\booking_check_in_screen.dart:115:                ),
+  lib\features\attendant\screens\booking_check_in_screen.dart:116:                const SizedBox(height: 
+4),
+  lib\features\attendant\screens\booking_check_in_screen.dart:117:                Text(
+> lib\features\attendant\screens\booking_check_in_screen.dart:118:                  'Booking ID: 
+${widget.bookingId}',
+  lib\features\attendant\screens\booking_check_in_screen.dart:119:                  maxLines: 1,
+  lib\features\attendant\screens\booking_check_in_screen.dart:120:                  overflow: 
+TextOverflow.ellipsis,
+  lib\features\attendant\screens\booking_check_in_screen.dart:121:                ),
+  lib\features\attendant\screens\booking_check_in_screen.dart:122:                SizedBox(height: 
+compact ? 12 : 22),
+  lib\features\attendant\screens\booking_check_in_screen.dart:123:                _row('License Plate', 
+data['licensePlate'] ?? '', Icons.directions_car_rounded),
+  lib\features\attendant\screens\booking_check_in_screen.dart:124:                _row('Space Number', 
+data['spaceNumber'] ?? 'Not assigned', Icons.local_parking_rounded),
+  lib\features\attendant\screens\booking_check_in_screen.dart:125:                _row('Status', status, 
+Icons.info_rounded),
+  lib\features\attendant\screens\booking_check_in_screen.dart:126:                _row('Payment', 
+data['paymentStatus'] ?? '', Icons.payment_rounded),
+  lib\features\attendant\screens\booking_check_in_screen.dart:127:                _row('Start Time', 
+_time(data['startTime']), Icons.play_circle_rounded),
+  lib\features\attendant\screens\booking_check_in_screen.dart:128:                _row('End Time', 
+_time(data['endTime']), Icons.stop_circle_rounded),
+  lib\features\attendant\screens\booking_check_in_screen.dart:129:                _row('Checked In', 
+_time(data['checkedInAt']), Icons.login_rounded),
+  lib\features\attendant\screens\booking_check_in_screen.dart:130:                _row('Checked Out', 
+_time(data['checkedOutAt']), Icons.logout_rounded),
+  lib\features\attendant\screens\booking_check_in_screen.dart:131:                SizedBox(height: 
+compact ? 12 : 22),
+  lib\features\attendant\screens\booking_check_in_screen.dart:132:                SizedBox(
+  lib\features\attendant\screens\check_in_list_screen.dart:97:                          trailing: const 
+Icon(Icons.chevron_right_rounded),
+  lib\features\attendant\screens\check_in_list_screen.dart:98:                          onTap: () => 
+Navigator.push(
+  lib\features\attendant\screens\check_in_list_screen.dart:99:                            context,
+  lib\features\attendant\screens\check_in_list_screen.dart:100:                            
+MaterialPageRoute(
+> lib\features\attendant\screens\check_in_list_screen.dart:101:                              builder: (_) 
+=> BookingCheckInScreen(bookingId: doc.id),
+  lib\features\attendant\screens\check_in_list_screen.dart:102:                            ),
+  lib\features\attendant\screens\check_in_list_screen.dart:103:                          ),
+  lib\features\attendant\screens\check_in_list_screen.dart:104:                        );
+  lib\features\attendant\screens\check_in_list_screen.dart:105:                      }).toList(),
+  lib\features\attendant\screens\check_in_list_screen.dart:106:                    ),
+  lib\features\attendant\screens\check_in_list_screen.dart:107:                  );
+  lib\features\attendant\screens\check_in_list_screen.dart:108:                },
+  lib\features\attendant\screens\check_in_list_screen.dart:109:              );
+  lib\features\attendant\screens\check_in_list_screen.dart:110:            },
+  lib\features\attendant\screens\check_in_list_screen.dart:111:          );
+  lib\features\attendant\screens\check_in_list_screen.dart:112:        },
+  lib\features\attendant\screens\check_in_list_screen.dart:113:      ),
+  lib\features\attendant\screens\check_in_list_screen.dart:114:    );
+  lib\features\attendant\screens\check_in_list_screen.dart:115:  }
+  lib\features\attendant\screens\qr_scanner_screen.dart:31:
+  lib\features\attendant\screens\qr_scanner_screen.dart:32:      await Navigator.pushReplacement(
+  lib\features\attendant\screens\qr_scanner_screen.dart:33:        context,
+  lib\features\attendant\screens\qr_scanner_screen.dart:34:        MaterialPageRoute(
+> lib\features\attendant\screens\qr_scanner_screen.dart:35:          builder: (_) => 
+BookingCheckInScreen(bookingId: booking.id),
+  lib\features\attendant\screens\qr_scanner_screen.dart:36:        ),
+  lib\features\attendant\screens\qr_scanner_screen.dart:37:      );
+  lib\features\attendant\screens\qr_scanner_screen.dart:38:    } catch (e) {
+  lib\features\attendant\screens\qr_scanner_screen.dart:39:      if (!mounted) return;
+  lib\features\attendant\screens\qr_scanner_screen.dart:40:
+  lib\features\attendant\screens\qr_scanner_screen.dart:41:      
+ScaffoldMessenger.of(context).showSnackBar(
+  lib\features\attendant\screens\qr_scanner_screen.dart:42:        SnackBar(content: Text('Scan failed: 
+$e')),
+  lib\features\attendant\screens\qr_scanner_screen.dart:43:      );
+  lib\features\attendant\screens\qr_scanner_screen.dart:44:
+  lib\features\attendant\screens\qr_scanner_screen.dart:45:      await Future.delayed(const 
+Duration(seconds: 1));
+  lib\features\attendant\screens\qr_scanner_screen.dart:46:
+  lib\features\attendant\screens\qr_scanner_screen.dart:47:      if (mounted) setState(() => _handled = 
+false);
+  lib\features\attendant\screens\qr_scanner_screen.dart:48:    }
+  lib\features\attendant\screens\qr_scanner_screen.dart:49:  }
+  lib\features\driver\screens\booking_details_screen.dart:4:import 
+'../../../core/services/booking_service.dart';
+  lib\features\driver\screens\booking_details_screen.dart:5:import 'qr_pass_screen.dart';
+  lib\features\driver\screens\booking_details_screen.dart:6:
+  lib\features\driver\screens\booking_details_screen.dart:7:class BookingDetailsScreen extends 
+StatelessWidget {
+> lib\features\driver\screens\booking_details_screen.dart:8:  final String bookingId;
+  lib\features\driver\screens\booking_details_screen.dart:9:
+  lib\features\driver\screens\booking_details_screen.dart:10:  const BookingDetailsScreen({
+  lib\features\driver\screens\booking_details_screen.dart:11:    super.key,
+> lib\features\driver\screens\booking_details_screen.dart:12:    required this.bookingId,
+  lib\features\driver\screens\booking_details_screen.dart:13:  });
+  lib\features\driver\screens\booking_details_screen.dart:14:
+  lib\features\driver\screens\booking_details_screen.dart:15:  String _money(dynamic value) {
+  lib\features\driver\screens\booking_details_screen.dart:16:    final amount = value is num ? 
+value.toDouble() : 0.0;
+  lib\features\driver\screens\booking_details_screen.dart:17:    return '\$${amount.toStringAsFixed(2)}';
+  lib\features\driver\screens\booking_details_screen.dart:18:  }
+  lib\features\driver\screens\booking_details_screen.dart:19:
+  lib\features\driver\screens\booking_details_screen.dart:20:  String _formatTime(dynamic value) {
+  lib\features\driver\screens\booking_details_screen.dart:21:    if (value is! Timestamp) return 'Not 
+set';
+  lib\features\driver\screens\booking_details_screen.dart:22:    final dt = value.toDate();
+  lib\features\driver\screens\booking_details_screen.dart:23:    return '${dt.month}/${dt.day}/${dt.year} 
+${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  lib\features\driver\screens\booking_details_screen.dart:24:  }
+  lib\features\driver\screens\booking_details_screen.dart:25:
+  lib\features\driver\screens\booking_details_screen.dart:26:  Widget _card(String title, String value, 
+IconData icon) {
+  lib\features\driver\screens\booking_details_screen.dart:47:    );
+  lib\features\driver\screens\booking_details_screen.dart:48:
+  lib\features\driver\screens\booking_details_screen.dart:49:    if (confirm != true) return;
+  lib\features\driver\screens\booking_details_screen.dart:50:
+> lib\features\driver\screens\booking_details_screen.dart:51:    await 
+BookingService().cancelBooking(bookingId);
+  lib\features\driver\screens\booking_details_screen.dart:52:
+  lib\features\driver\screens\booking_details_screen.dart:53:    if (!context.mounted) return;
+  lib\features\driver\screens\booking_details_screen.dart:54:    Navigator.pop(context);
+  lib\features\driver\screens\booking_details_screen.dart:55:  }
+  lib\features\driver\screens\booking_details_screen.dart:56:
+  lib\features\driver\screens\booking_details_screen.dart:57:  @override
+  lib\features\driver\screens\booking_details_screen.dart:58:  Widget build(BuildContext context) {
+  lib\features\driver\screens\booking_details_screen.dart:59:    return Scaffold(
+  lib\features\driver\screens\booking_details_screen.dart:60:      appBar: AppBar(
+  lib\features\driver\screens\booking_details_screen.dart:61:        automaticallyImplyLeading: false,
+  lib\features\driver\screens\booking_details_screen.dart:62:        leading: const AppleBackButton(),
+  lib\features\driver\screens\booking_details_screen.dart:63:        title: const Text('Booking Details'),
+  lib\features\driver\screens\booking_details_screen.dart:64:      ),
+  lib\features\driver\screens\booking_details_screen.dart:65:      body: 
+FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+> lib\features\driver\screens\booking_details_screen.dart:66:        future: 
+FirebaseFirestore.instance.collection('bookings').doc(bookingId).get(),
+  lib\features\driver\screens\booking_details_screen.dart:67:        builder: (context, snapshot) {
+  lib\features\driver\screens\booking_details_screen.dart:68:          if (snapshot.hasError) return 
+Center(child: Text('Error: ${snapshot.error}'));
+  lib\features\driver\screens\booking_details_screen.dart:69:          if (!snapshot.hasData) return 
+const Center(child: CircularProgressIndicator());
+  lib\features\driver\screens\booking_details_screen.dart:70:
+  lib\features\driver\screens\booking_details_screen.dart:71:          final data = snapshot.data!.data();
+  lib\features\driver\screens\booking_details_screen.dart:72:
+  lib\features\driver\screens\booking_details_screen.dart:73:          if (data == null) {
+  lib\features\driver\screens\booking_details_screen.dart:74:            return const Center(child: 
+Text('Booking not found.'));
+  lib\features\driver\screens\booking_details_screen.dart:75:          }
+  lib\features\driver\screens\booking_details_screen.dart:76:
+  lib\features\driver\screens\booking_details_screen.dart:77:          return ListView(
+  lib\features\driver\screens\booking_details_screen.dart:78:            padding: const 
+EdgeInsets.all(22),
+  lib\features\driver\screens\booking_details_screen.dart:79:            children: [
+  lib\features\driver\screens\booking_details_screen.dart:80:              Text(
+  lib\features\driver\screens\booking_details_screen.dart:108:                  onPressed: () {
+  lib\features\driver\screens\booking_details_screen.dart:109:                    Navigator.push(
+  lib\features\driver\screens\booking_details_screen.dart:110:                      context,
+  lib\features\driver\screens\booking_details_screen.dart:111:                      MaterialPageRoute(
+> lib\features\driver\screens\booking_details_screen.dart:112:                        builder: (_) => 
+QrPassScreen(bookingId: bookingId),
+  lib\features\driver\screens\booking_details_screen.dart:113:                      ),
+  lib\features\driver\screens\booking_details_screen.dart:114:                    );
+  lib\features\driver\screens\booking_details_screen.dart:115:                  },
+  lib\features\driver\screens\booking_details_screen.dart:116:                  icon: const 
+Icon(Icons.qr_code_rounded),
+  lib\features\driver\screens\booking_details_screen.dart:117:                  label: const 
+FittedBox(child: Text('View QR Pass')),
+  lib\features\driver\screens\booking_details_screen.dart:118:                ),
+  lib\features\driver\screens\booking_details_screen.dart:119:              ),
+  lib\features\driver\screens\booking_details_screen.dart:120:            ],
+  lib\features\driver\screens\booking_details_screen.dart:121:          );
+  lib\features\driver\screens\booking_details_screen.dart:122:        },
+  lib\features\driver\screens\booking_details_screen.dart:123:      ),
+  lib\features\driver\screens\booking_details_screen.dart:124:    );
+  lib\features\driver\screens\booking_details_screen.dart:125:  }
+  lib\features\driver\screens\booking_details_screen.dart:126:}
+  lib\features\driver\screens\checkout_screen.dart:75:
+  lib\features\driver\screens\checkout_screen.dart:76:    setState(() => _saving = true);
+  lib\features\driver\screens\checkout_screen.dart:77:
+  lib\features\driver\screens\checkout_screen.dart:78:    try {
+> lib\features\driver\screens\checkout_screen.dart:79:      final bookingId = await 
+BookingService().createPendingBooking(
+  lib\features\driver\screens\checkout_screen.dart:80:        space: widget.space,
+  lib\features\driver\screens\checkout_screen.dart:81:        licensePlate: plate,
+  lib\features\driver\screens\checkout_screen.dart:82:        amount: _total,
+  lib\features\driver\screens\checkout_screen.dart:83:        hours: _hours,
+  lib\features\driver\screens\checkout_screen.dart:84:      ).timeout(const Duration(seconds: 30));
+  lib\features\driver\screens\checkout_screen.dart:85:
+> lib\features\driver\screens\checkout_screen.dart:86:      await 
+FirebaseFirestore.instance.collection('bookings').doc(bookingId).set({
+  lib\features\driver\screens\checkout_screen.dart:87:        'spaceNumber': selectedNumber,
+  lib\features\driver\screens\checkout_screen.dart:88:        'platformFee': _platformFee,
+  lib\features\driver\screens\checkout_screen.dart:89:        'hostPayout': _hostReceives,
+  lib\features\driver\screens\checkout_screen.dart:90:        'updatedAt': FieldValue.serverTimestamp(),
+  lib\features\driver\screens\checkout_screen.dart:91:      }, SetOptions(merge: true));
+  lib\features\driver\screens\checkout_screen.dart:92:
+  lib\features\driver\screens\checkout_screen.dart:93:      final stripe = StripeService();
+  lib\features\driver\screens\checkout_screen.dart:94:
+> lib\features\driver\screens\checkout_screen.dart:95:      final payment = await 
+stripe.createBookingPaymentIntent(
+> lib\features\driver\screens\checkout_screen.dart:96:        bookingId: bookingId,
+  lib\features\driver\screens\checkout_screen.dart:97:        hostId: widget.space.hostId,
+  lib\features\driver\screens\checkout_screen.dart:98:        amount: _total,
+  lib\features\driver\screens\checkout_screen.dart:99:      ).timeout(const Duration(seconds: 45));
+  lib\features\driver\screens\checkout_screen.dart:100:
+  lib\features\driver\screens\checkout_screen.dart:101:      await stripe.initializePaymentSheet(
+> lib\features\driver\screens\checkout_screen.dart:102:        clientSecret: 
+payment['clientSecret'].toString(),
+  lib\features\driver\screens\checkout_screen.dart:103:      ).timeout(const Duration(seconds: 30));
+  lib\features\driver\screens\checkout_screen.dart:104:
+> lib\features\driver\screens\checkout_screen.dart:105:      await 
+stripe.presentPaymentSheet().timeout(const Duration(seconds: 120));
+  lib\features\driver\screens\checkout_screen.dart:106:
+  lib\features\driver\screens\checkout_screen.dart:107:      await stripe.markBookingPaidAfterPayment(
+> lib\features\driver\screens\checkout_screen.dart:108:        bookingId: bookingId,
+> lib\features\driver\screens\checkout_screen.dart:109:        paymentIntentId: 
+payment['paymentIntentId'].toString(),
+  lib\features\driver\screens\checkout_screen.dart:110:      ).timeout(const Duration(seconds: 45));
+  lib\features\driver\screens\checkout_screen.dart:111:
+> lib\features\driver\screens\checkout_screen.dart:112:      await 
+FirebaseFirestore.instance.collection('bookings').doc(bookingId).set({
+  lib\features\driver\screens\checkout_screen.dart:113:        'status': 'paid',
+  lib\features\driver\screens\checkout_screen.dart:114:        'paymentStatus': 'paid',
+> lib\features\driver\screens\checkout_screen.dart:115:        'paymentIntentId': 
+payment['paymentIntentId'].toString(),
+  lib\features\driver\screens\checkout_screen.dart:116:        'spaceNumber': selectedNumber,
+  lib\features\driver\screens\checkout_screen.dart:117:        'platformFee': _platformFee,
+  lib\features\driver\screens\checkout_screen.dart:118:        'hostPayout': _hostReceives,
+  lib\features\driver\screens\checkout_screen.dart:119:        'paidAt': FieldValue.serverTimestamp(),
+  lib\features\driver\screens\checkout_screen.dart:120:        'updatedAt': FieldValue.serverTimestamp(),
+  lib\features\driver\screens\checkout_screen.dart:121:      }, SetOptions(merge: true));
+  lib\features\driver\screens\checkout_screen.dart:122:
+  lib\features\driver\screens\checkout_screen.dart:123:      await 
+FirebaseFirestore.instance.collection('spaces').doc(widget.space.id).set({
+  lib\features\driver\screens\checkout_screen.dart:124:        'occupiedSpaceNumbers': 
+FieldValue.arrayUnion([selectedNumber]),
+  lib\features\driver\screens\checkout_screen.dart:125:        'availableSpaces': 
+widget.space.availableSpaces > 0
+  lib\features\driver\screens\checkout_screen.dart:126:            ? widget.space.availableSpaces - 1
+  lib\features\driver\screens\checkout_screen.dart:127:            : 0,
+  lib\features\driver\screens\checkout_screen.dart:128:        'updatedAt': FieldValue.serverTimestamp(),
+  lib\features\driver\screens\checkout_screen.dart:129:      }, SetOptions(merge: true));
+  lib\features\driver\screens\checkout_screen.dart:132:
+  lib\features\driver\screens\checkout_screen.dart:133:      Navigator.pushReplacement(
+  lib\features\driver\screens\checkout_screen.dart:134:        context,
+  lib\features\driver\screens\checkout_screen.dart:135:        MaterialPageRoute(
+> lib\features\driver\screens\checkout_screen.dart:136:          builder: (_) => QrPassScreen(bookingId: 
+bookingId),
+  lib\features\driver\screens\checkout_screen.dart:137:        ),
+  lib\features\driver\screens\checkout_screen.dart:138:      );
+  lib\features\driver\screens\checkout_screen.dart:139:    } catch (e) {
+  lib\features\driver\screens\checkout_screen.dart:140:      if (!mounted) return;
+  lib\features\driver\screens\checkout_screen.dart:141:
+  lib\features\driver\screens\checkout_screen.dart:142:      ScaffoldMessenger.of(context).showSnackBar(
+  lib\features\driver\screens\checkout_screen.dart:143:        SnackBar(content: Text('Booking failed: 
+$e')),
+  lib\features\driver\screens\checkout_screen.dart:144:      );
+  lib\features\driver\screens\checkout_screen.dart:145:    } finally {
+  lib\features\driver\screens\checkout_screen.dart:146:      if (mounted) setState(() => _saving = false);
+  lib\features\driver\screens\checkout_screen.dart:147:    }
+  lib\features\driver\screens\checkout_screen.dart:148:  }
+  lib\features\driver\screens\checkout_screen.dart:149:
+  lib\features\driver\screens\checkout_screen.dart:150:  Widget _row(String label, String value) {
+  lib\features\driver\screens\my_bookings_screen.dart:105:                  trailing: const 
+Icon(Icons.chevron_right_rounded),
+  lib\features\driver\screens\my_bookings_screen.dart:106:                  onTap: () => Navigator.push(
+  lib\features\driver\screens\my_bookings_screen.dart:107:                    context,
+  lib\features\driver\screens\my_bookings_screen.dart:108:                    MaterialPageRoute(
+> lib\features\driver\screens\my_bookings_screen.dart:109:                      builder: (_) => 
+BookingDetailsScreen(bookingId: doc.id),
+  lib\features\driver\screens\my_bookings_screen.dart:110:                    ),
+  lib\features\driver\screens\my_bookings_screen.dart:111:                  ),
+  lib\features\driver\screens\my_bookings_screen.dart:112:                ),
+  lib\features\driver\screens\my_bookings_screen.dart:113:                if (history)
+  lib\features\driver\screens\my_bookings_screen.dart:114:                  Align(
+  lib\features\driver\screens\my_bookings_screen.dart:115:                    alignment: 
+Alignment.centerRight,
+  lib\features\driver\screens\my_bookings_screen.dart:116:                    child: OutlinedButton.icon(
+  lib\features\driver\screens\my_bookings_screen.dart:117:                      onPressed: () => 
+_archive(doc.id),
+  lib\features\driver\screens\my_bookings_screen.dart:118:                      icon: const 
+Icon(Icons.archive_rounded),
+  lib\features\driver\screens\my_bookings_screen.dart:119:                      label: const 
+Text('Archive'),
+  lib\features\driver\screens\my_bookings_screen.dart:120:                    ),
+  lib\features\driver\screens\my_bookings_screen.dart:121:                  ),
+  lib\features\driver\screens\my_bookings_screen.dart:122:              ],
+  lib\features\driver\screens\my_bookings_screen.dart:123:            ),
+  lib\features\driver\screens\qr_pass_screen.dart:3:import 'package:qr_flutter/qr_flutter.dart';
+  lib\features\driver\screens\qr_pass_screen.dart:4:import '../../../core/widgets/apple_back_button.dart';
+  lib\features\driver\screens\qr_pass_screen.dart:5:
+  lib\features\driver\screens\qr_pass_screen.dart:6:class QrPassScreen extends StatelessWidget {
+> lib\features\driver\screens\qr_pass_screen.dart:7:  final String bookingId;
+  lib\features\driver\screens\qr_pass_screen.dart:8:
+  lib\features\driver\screens\qr_pass_screen.dart:9:  const QrPassScreen({
+  lib\features\driver\screens\qr_pass_screen.dart:10:    super.key,
+> lib\features\driver\screens\qr_pass_screen.dart:11:    required this.bookingId,
+  lib\features\driver\screens\qr_pass_screen.dart:12:  });
+  lib\features\driver\screens\qr_pass_screen.dart:13:
+  lib\features\driver\screens\qr_pass_screen.dart:14:  String _formatTime(dynamic value) {
+  lib\features\driver\screens\qr_pass_screen.dart:15:    if (value is! Timestamp) return 'Not set';
+  lib\features\driver\screens\qr_pass_screen.dart:16:    final dt = value.toDate();
+  lib\features\driver\screens\qr_pass_screen.dart:17:    return '${dt.month}/${dt.day}/${dt.year} 
+${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  lib\features\driver\screens\qr_pass_screen.dart:18:  }
+  lib\features\driver\screens\qr_pass_screen.dart:19:
+  lib\features\driver\screens\qr_pass_screen.dart:20:  @override
+  lib\features\driver\screens\qr_pass_screen.dart:21:  Widget build(BuildContext context) {
+> lib\features\driver\screens\qr_pass_screen.dart:22:    final qrValue = 'ANY1SPACE_BOOKING:$bookingId';
+  lib\features\driver\screens\qr_pass_screen.dart:23:
+  lib\features\driver\screens\qr_pass_screen.dart:24:    return Scaffold(
+  lib\features\driver\screens\qr_pass_screen.dart:25:      backgroundColor: const Color(0xFFF6F7FB),
+  lib\features\driver\screens\qr_pass_screen.dart:26:      appBar: AppBar(
+  lib\features\driver\screens\qr_pass_screen.dart:27:        automaticallyImplyLeading: false,
+  lib\features\driver\screens\qr_pass_screen.dart:28:        leading: const AppleBackButton(),
+  lib\features\driver\screens\qr_pass_screen.dart:29:        title: const Text('QR Parking Pass'),
+  lib\features\driver\screens\qr_pass_screen.dart:30:      ),
+  lib\features\driver\screens\qr_pass_screen.dart:31:      body: 
+FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+> lib\features\driver\screens\qr_pass_screen.dart:32:        future: 
+FirebaseFirestore.instance.collection('bookings').doc(bookingId).get(),
+  lib\features\driver\screens\qr_pass_screen.dart:33:        builder: (context, snapshot) {
+  lib\features\driver\screens\qr_pass_screen.dart:34:          final data = snapshot.data?.data();
+  lib\features\driver\screens\qr_pass_screen.dart:35:
+  lib\features\driver\screens\qr_pass_screen.dart:36:          return Center(
+  lib\features\driver\screens\qr_pass_screen.dart:37:            child: Card(
+  lib\features\driver\screens\qr_pass_screen.dart:38:              margin: const EdgeInsets.all(22),
+  lib\features\driver\screens\qr_pass_screen.dart:39:              child: Padding(
+  lib\features\driver\screens\qr_pass_screen.dart:40:                padding: const EdgeInsets.all(28),
+  lib\features\driver\screens\qr_pass_screen.dart:41:                child: Column(
+  lib\features\driver\screens\qr_pass_screen.dart:42:                  mainAxisSize: MainAxisSize.min,
+  lib\features\driver\screens\qr_pass_screen.dart:43:                  children: [
+  lib\features\driver\screens\qr_pass_screen.dart:44:                    QrImageView(
+  lib\features\driver\screens\qr_pass_screen.dart:45:                      data: qrValue,
+  lib\features\driver\screens\qr_pass_screen.dart:46:                      version: QrVersions.auto,
+  lib\features\driver\screens\qr_pass_screen.dart:52:                      style: TextStyle(fontSize: 22, 
+fontWeight: FontWeight.w900),
+  lib\features\driver\screens\qr_pass_screen.dart:53:                    ),
+  lib\features\driver\screens\qr_pass_screen.dart:54:                    const SizedBox(height: 12),
+  lib\features\driver\screens\qr_pass_screen.dart:55:                    if (data == null)
+> lib\features\driver\screens\qr_pass_screen.dart:56:                      Text(bookingId)
+  lib\features\driver\screens\qr_pass_screen.dart:57:                    else ...[
+  lib\features\driver\screens\qr_pass_screen.dart:58:                      Text(
+  lib\features\driver\screens\qr_pass_screen.dart:59:                        data['spaceName'] ?? '',
+  lib\features\driver\screens\qr_pass_screen.dart:60:                        textAlign: TextAlign.center,
+  lib\features\driver\screens\qr_pass_screen.dart:61:                        style: const 
+TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+  lib\features\driver\screens\qr_pass_screen.dart:62:                      ),
+  lib\features\driver\screens\qr_pass_screen.dart:63:                      const SizedBox(height: 6),
+  lib\features\driver\screens\qr_pass_screen.dart:64:                      Text('Plate: 
+${data['licensePlate'] ?? ''}'),
+  lib\features\driver\screens\qr_pass_screen.dart:65:                      Text('Status: ${data['status'] 
+?? ''}'),
+  lib\features\driver\screens\qr_pass_screen.dart:66:                      Text('Start: 
+${_formatTime(data['startTime'])}'),
+  lib\features\driver\screens\qr_pass_screen.dart:67:                      Text('End: 
+${_formatTime(data['endTime'])}'),
+  lib\features\driver\screens\qr_pass_screen.dart:68:                    ],
+  lib\features\driver\screens\qr_pass_screen.dart:69:                  ],
+  lib\features\driver\screens\qr_pass_screen.dart:70:                ),
+  lib\features\host\screens\attendant_details_screen.dart:77:  }
+  lib\features\host\screens\attendant_details_screen.dart:78:
+  lib\features\host\screens\attendant_details_screen.dart:79:  Future<void> _payShiftInApp(BuildContext 
+context, String shiftId) async {
+  lib\features\host\screens\attendant_details_screen.dart:80:    try {
+> lib\features\host\screens\attendant_details_screen.dart:81:      final payment = await 
+StripeService().createAttendantShiftPaymentIntent(
+  lib\features\host\screens\attendant_details_screen.dart:82:        shiftId: shiftId,
+  lib\features\host\screens\attendant_details_screen.dart:83:      );
+  lib\features\host\screens\attendant_details_screen.dart:84:
+  lib\features\host\screens\attendant_details_screen.dart:85:      await 
+StripeService().initializePaymentSheet(
+> lib\features\host\screens\attendant_details_screen.dart:86:        clientSecret: 
+payment['clientSecret'].toString(),
+  lib\features\host\screens\attendant_details_screen.dart:87:      );
+  lib\features\host\screens\attendant_details_screen.dart:88:
+> lib\features\host\screens\attendant_details_screen.dart:89:      await 
+StripeService().presentPaymentSheet();
+  lib\features\host\screens\attendant_details_screen.dart:90:
+  lib\features\host\screens\attendant_details_screen.dart:91:      await 
+StripeService().markAttendantShiftPaidAfterPayment(
+  lib\features\host\screens\attendant_details_screen.dart:92:        shiftId: shiftId,
+> lib\features\host\screens\attendant_details_screen.dart:93:        paymentIntentId: 
+payment['paymentIntentId'].toString(),
+  lib\features\host\screens\attendant_details_screen.dart:94:      );
+  lib\features\host\screens\attendant_details_screen.dart:95:
+  lib\features\host\screens\attendant_details_screen.dart:96:      if (!context.mounted) return;
+  lib\features\host\screens\attendant_details_screen.dart:97:
+  lib\features\host\screens\attendant_details_screen.dart:98:      
+ScaffoldMessenger.of(context).showSnackBar(
+  lib\features\host\screens\attendant_details_screen.dart:99:        const SnackBar(content: 
+Text('Attendant payment completed.')),
+  lib\features\host\screens\attendant_details_screen.dart:100:      );
+  lib\features\host\screens\attendant_details_screen.dart:101:    } catch (e) {
+  lib\features\host\screens\attendant_details_screen.dart:102:      if (!context.mounted) return;
+  lib\features\host\screens\attendant_details_screen.dart:103:
+  lib\features\host\screens\attendant_details_screen.dart:104:      
+ScaffoldMessenger.of(context).showSnackBar(
+  lib\features\host\screens\attendant_details_screen.dart:105:        SnackBar(
+  lib\features\host\screens\attendant_details_screen.dart:106:          content: 
+Text(_friendlyPaymentError(e)),
+  lib\features\host\screens\attendant_details_screen.dart:107:          duration: const Duration(seconds: 
+5),
+  lib\features\host\screens\host_bookings_screen.dart:40:        return Colors.black54;
+  lib\features\host\screens\host_bookings_screen.dart:41:    }
+  lib\features\host\screens\host_bookings_screen.dart:42:  }
+  lib\features\host\screens\host_bookings_screen.dart:43:
+> lib\features\host\screens\host_bookings_screen.dart:44:  Future<void> _updateStatus(String bookingId, 
+String status) async {
+> lib\features\host\screens\host_bookings_screen.dart:45:    await 
+FirebaseFirestore.instance.collection('bookings').doc(bookingId).set({
+  lib\features\host\screens\host_bookings_screen.dart:46:      'status': status,
+  lib\features\host\screens\host_bookings_screen.dart:47:      'updatedAt': FieldValue.serverTimestamp(),
+  lib\features\host\screens\host_bookings_screen.dart:48:      if (status == 'checkedIn') 'checkedInAt': 
+FieldValue.serverTimestamp(),
+  lib\features\host\screens\host_bookings_screen.dart:49:      if (status == 'checkedOut') 
+'checkedOutAt': FieldValue.serverTimestamp(),
+  lib\features\host\screens\host_bookings_screen.dart:50:    }, SetOptions(merge: true));
+  lib\features\host\screens\host_bookings_screen.dart:51:  }
+  lib\features\host\screens\host_bookings_screen.dart:52:
+> lib\features\host\screens\host_bookings_screen.dart:53:  Future<void> _refundBooking(BuildContext 
+context, String bookingId) async {
+  lib\features\host\screens\host_bookings_screen.dart:54:    final confirm = await showDialog<bool>(
+  lib\features\host\screens\host_bookings_screen.dart:55:      context: context,
+  lib\features\host\screens\host_bookings_screen.dart:56:      builder: (_) => AlertDialog(
+  lib\features\host\screens\host_bookings_screen.dart:57:        title: const Text('Refund Booking?'),
+  lib\features\host\screens\host_bookings_screen.dart:58:        content: const Text('This will request a 
+refund through Stripe.'),
+  lib\features\host\screens\host_bookings_screen.dart:59:        actions: [
+  lib\features\host\screens\host_bookings_screen.dart:60:          TextButton(
+  lib\features\host\screens\host_bookings_screen.dart:61:            onPressed: () => 
+Navigator.pop(context, false),
+  lib\features\host\screens\host_bookings_screen.dart:62:            child: const Text('Cancel'),
+  lib\features\host\screens\host_bookings_screen.dart:63:          ),
+  lib\features\host\screens\host_bookings_screen.dart:64:          FilledButton(
+  lib\features\host\screens\host_bookings_screen.dart:65:            onPressed: () => 
+Navigator.pop(context, true),
+  lib\features\host\screens\host_bookings_screen.dart:66:            child: const Text('Refund'),
+  lib\features\host\screens\host_bookings_screen.dart:67:          ),
+  lib\features\host\screens\host_bookings_screen.dart:71:
+  lib\features\host\screens\host_bookings_screen.dart:72:    if (confirm != true) return;
+  lib\features\host\screens\host_bookings_screen.dart:73:
+  lib\features\host\screens\host_bookings_screen.dart:74:    try {
+> lib\features\host\screens\host_bookings_screen.dart:75:      await 
+StripeService().refundBookingPayment(bookingId: bookingId);
+  lib\features\host\screens\host_bookings_screen.dart:76:
+> lib\features\host\screens\host_bookings_screen.dart:77:      await 
+FirebaseFirestore.instance.collection('bookings').doc(bookingId).set({
+  lib\features\host\screens\host_bookings_screen.dart:78:        'status': 'refunded',
+  lib\features\host\screens\host_bookings_screen.dart:79:        'paymentStatus': 'refunded',
+  lib\features\host\screens\host_bookings_screen.dart:80:        'refundedAt': 
+FieldValue.serverTimestamp(),
+  lib\features\host\screens\host_bookings_screen.dart:81:        'updatedAt': 
+FieldValue.serverTimestamp(),
+  lib\features\host\screens\host_bookings_screen.dart:82:      }, SetOptions(merge: true));
+  lib\features\host\screens\host_bookings_screen.dart:83:
+  lib\features\host\screens\host_bookings_screen.dart:84:      if (!context.mounted) return;
+  lib\features\host\screens\host_bookings_screen.dart:85:      ScaffoldMessenger.of(context).showSnackBar(
+  lib\features\host\screens\host_bookings_screen.dart:86:        const SnackBar(content: Text('Booking 
+refunded.')),
+  lib\features\host\screens\host_bookings_screen.dart:87:      );
+  lib\features\host\screens\host_bookings_screen.dart:88:    } catch (e) {
+  lib\features\host\screens\host_bookings_screen.dart:89:      if (!context.mounted) return;
+  lib\features\host\screens\host_bookings_screen.dart:90:      ScaffoldMessenger.of(context).showSnackBar(
+  lib\features\host\screens\host_bookings_screen.dart:91:        SnackBar(content: Text('Refund failed: 
+$e')),
+  lib\features\host\screens\host_bookings_screen.dart:180:                                onPressed: () 
+=> Navigator.push(
+  lib\features\host\screens\host_bookings_screen.dart:181:                                  context,
+  lib\features\host\screens\host_bookings_screen.dart:182:                                  
+MaterialPageRoute(
+  lib\features\host\screens\host_bookings_screen.dart:183:                                    builder: 
+(_) => BookingDetailsScreen(
+> lib\features\host\screens\host_bookings_screen.dart:184:                                      
+bookingId: booking.id,
+  lib\features\host\screens\host_bookings_screen.dart:185:                                    ),
+  lib\features\host\screens\host_bookings_screen.dart:186:                                  ),
+  lib\features\host\screens\host_bookings_screen.dart:187:                                ),
+  lib\features\host\screens\host_bookings_screen.dart:188:                                icon: const 
+Icon(Icons.visibility_rounded),
+  lib\features\host\screens\host_bookings_screen.dart:189:                                label: const 
+Text('View'),
+  lib\features\host\screens\host_bookings_screen.dart:190:                              ),
+  lib\features\host\screens\host_bookings_screen.dart:191:                              
+OutlinedButton.icon(
+  lib\features\host\screens\host_bookings_screen.dart:192:                                onPressed: 
+status == 'checkedIn'
+  lib\features\host\screens\host_bookings_screen.dart:193:                                    ? null
+  lib\features\host\screens\host_bookings_screen.dart:194:                                    : () => 
+_updateStatus(booking.id, 'checkedIn'),
+  lib\features\host\screens\host_bookings_screen.dart:195:                                icon: const 
+Icon(Icons.login_rounded),
+  lib\features\host\screens\host_bookings_screen.dart:196:                                label: const 
+Text('Check In'),
+  lib\features\host\screens\host_bookings_screen.dart:197:                              ),
+  lib\features\host\screens\host_bookings_screen.dart:198:                              
+OutlinedButton.icon(
+  lib\features\host\screens\host_bookings_screen.dart:208:                                label: const 
+Text('Refund'),
+  lib\features\host\screens\host_bookings_screen.dart:209:                              ),
+  lib\features\host\screens\host_bookings_screen.dart:210:                              
+OutlinedButton.icon(
+  lib\features\host\screens\host_bookings_screen.dart:211:                                onPressed: () 
+async {
+> lib\features\host\screens\host_bookings_screen.dart:212:                                  await 
+StripeService().sendBookingReminder(bookingId: booking.id);
+  lib\features\host\screens\host_bookings_screen.dart:213:                                  if 
+(context.mounted) {
+  lib\features\host\screens\host_bookings_screen.dart:214:                                    
+ScaffoldMessenger.of(context).showSnackBar(
+  lib\features\host\screens\host_bookings_screen.dart:215:                                      const 
+SnackBar(content: Text('Reminder sent.')),
+  lib\features\host\screens\host_bookings_screen.dart:216:                                    );
+  lib\features\host\screens\host_bookings_screen.dart:217:                                  }
+  lib\features\host\screens\host_bookings_screen.dart:218:                                },
+  lib\features\host\screens\host_bookings_screen.dart:219:                                icon: const 
+Icon(Icons.notifications_active_rounded),
+  lib\features\host\screens\host_bookings_screen.dart:220:                                label: const 
+Text('Reminder'),
+  lib\features\host\screens\host_bookings_screen.dart:221:                              ),
+  lib\features\host\screens\host_bookings_screen.dart:222:                            ],
+  lib\features\host\screens\host_bookings_screen.dart:223:                          ),
+  lib\features\host\screens\host_bookings_screen.dart:224:                        ],
+  lib\features\host\screens\host_bookings_screen.dart:225:                      ),
+  lib\features\host\screens\host_bookings_screen.dart:226:                    ),
+  lib\features\shared\screens\support_screen.dart:18:class _SupportScreenState extends 
+State<SupportScreen> {
+  lib\features\shared\screens\support_screen.dart:19:  final _detailsController = TextEditingController();
+  lib\features\shared\screens\support_screen.dart:20:
+  lib\features\shared\screens\support_screen.dart:21:  String _category = 'Refund Request';
+> lib\features\shared\screens\support_screen.dart:22:  String? _bookingId;
+  lib\features\shared\screens\support_screen.dart:23:  Map<String, dynamic>? _bookingData;
+  lib\features\shared\screens\support_screen.dart:24:  bool _loading = false;
+  lib\features\shared\screens\support_screen.dart:25:
+  lib\features\shared\screens\support_screen.dart:26:  @override
+  lib\features\shared\screens\support_screen.dart:27:  void dispose() {
+  lib\features\shared\screens\support_screen.dart:28:    _detailsController.dispose();
+  lib\features\shared\screens\support_screen.dart:29:    super.dispose();
+  lib\features\shared\screens\support_screen.dart:30:  }
+  lib\features\shared\screens\support_screen.dart:31:
+  lib\features\shared\screens\support_screen.dart:32:  Stream<QuerySnapshot<Map<String, dynamic>>> 
+_myBookings() {
+  lib\features\shared\screens\support_screen.dart:33:    final uid = 
+FirebaseAuth.instance.currentUser?.uid ?? '';
+  lib\features\shared\screens\support_screen.dart:34:
+  lib\features\shared\screens\support_screen.dart:35:    return FirebaseFirestore.instance
+  lib\features\shared\screens\support_screen.dart:36:        .collection('bookings')
+  lib\features\shared\screens\support_screen.dart:40:
+  lib\features\shared\screens\support_screen.dart:41:  Future<void> _submit() async {
+  lib\features\shared\screens\support_screen.dart:42:    final details = _detailsController.text.trim();
+  lib\features\shared\screens\support_screen.dart:43:
+> lib\features\shared\screens\support_screen.dart:44:    if (_bookingId == null || _bookingData == null) {
+  lib\features\shared\screens\support_screen.dart:45:      ScaffoldMessenger.of(context).showSnackBar(
+  lib\features\shared\screens\support_screen.dart:46:        const SnackBar(content: Text('Please select 
+the booking for this issue.')),
+  lib\features\shared\screens\support_screen.dart:47:      );
+  lib\features\shared\screens\support_screen.dart:48:      return;
+  lib\features\shared\screens\support_screen.dart:49:    }
+  lib\features\shared\screens\support_screen.dart:50:
+  lib\features\shared\screens\support_screen.dart:51:    if (details.isEmpty) {
+  lib\features\shared\screens\support_screen.dart:52:      ScaffoldMessenger.of(context).showSnackBar(
+  lib\features\shared\screens\support_screen.dart:53:        const SnackBar(content: Text('Please explain 
+the issue before submitting.')),
+  lib\features\shared\screens\support_screen.dart:54:      );
+  lib\features\shared\screens\support_screen.dart:55:      return;
+  lib\features\shared\screens\support_screen.dart:56:    }
+  lib\features\shared\screens\support_screen.dart:57:
+  lib\features\shared\screens\support_screen.dart:58:    final user = FirebaseAuth.instance.currentUser;
+  lib\features\shared\screens\support_screen.dart:72:        'driverId': user.uid,
+  lib\features\shared\screens\support_screen.dart:73:        'driverEmail': user.email ?? '',
+  lib\features\shared\screens\support_screen.dart:74:        'email': user.email ?? '',
+  lib\features\shared\screens\support_screen.dart:75:        'hostId': _bookingData?['hostId'] ?? '',
+> lib\features\shared\screens\support_screen.dart:76:        'bookingId': _bookingId,
+  lib\features\shared\screens\support_screen.dart:77:        'spaceId': _bookingData?['spaceId'] ?? '',
+  lib\features\shared\screens\support_screen.dart:78:        'spaceName': _bookingData?['spaceName'] ?? 
+'',
+  lib\features\shared\screens\support_screen.dart:79:        'licensePlate': 
+_bookingData?['licensePlate'] ?? '',
+  lib\features\shared\screens\support_screen.dart:80:        'category': _category,
+  lib\features\shared\screens\support_screen.dart:81:        'subject': _category,
+  lib\features\shared\screens\support_screen.dart:82:        'message': details,
+  lib\features\shared\screens\support_screen.dart:83:        'details': details,
+  lib\features\shared\screens\support_screen.dart:84:        'status': 'open',
+  lib\features\shared\screens\support_screen.dart:85:        'adminVisible': true,
+  lib\features\shared\screens\support_screen.dart:86:        'createdAt': FieldValue.serverTimestamp(),
+  lib\features\shared\screens\support_screen.dart:87:        'updatedAt': FieldValue.serverTimestamp(),
+  lib\features\shared\screens\support_screen.dart:88:      });
+  lib\features\shared\screens\support_screen.dart:89:
+  lib\features\shared\screens\support_screen.dart:90:      if (!mounted) return;
+  lib\features\shared\screens\support_screen.dart:274:            builder: (context, snapshot) {
+  lib\features\shared\screens\support_screen.dart:275:              final docs = snapshot.data?.docs ?? 
+[];
+  lib\features\shared\screens\support_screen.dart:276:
+  lib\features\shared\screens\support_screen.dart:277:              return 
+DropdownButtonFormField<String>(
+> lib\features\shared\screens\support_screen.dart:278:                initialValue: _bookingId,
+  lib\features\shared\screens\support_screen.dart:279:                decoration: const InputDecoration(
+  lib\features\shared\screens\support_screen.dart:280:                  labelText: 'Select Booking',
+  lib\features\shared\screens\support_screen.dart:281:                  border: OutlineInputBorder(),
+  lib\features\shared\screens\support_screen.dart:282:                ),
+  lib\features\shared\screens\support_screen.dart:283:                items: docs.map((doc) {
+  lib\features\shared\screens\support_screen.dart:284:                  final data = doc.data();
+  lib\features\shared\screens\support_screen.dart:285:
+  lib\features\shared\screens\support_screen.dart:286:                  return DropdownMenuItem<String>(
+  lib\features\shared\screens\support_screen.dart:287:                    value: doc.id,
+  lib\features\shared\screens\support_screen.dart:288:                    child: 
+Text('${data['spaceName'] ?? 'Booking'} • ${data['licensePlate'] ?? ''}'),
+  lib\features\shared\screens\support_screen.dart:289:                  );
+  lib\features\shared\screens\support_screen.dart:290:                }).toList(),
+  lib\features\shared\screens\support_screen.dart:291:                onChanged: (value) {
+  lib\features\shared\screens\support_screen.dart:292:                  final doc = docs.firstWhere((d) 
+=> d.id == value);
+  lib\features\shared\screens\support_screen.dart:293:                  setState(() {
+> lib\features\shared\screens\support_screen.dart:294:                    _bookingId = doc.id;
+  lib\features\shared\screens\support_screen.dart:295:                    _bookingData = doc.data();
+  lib\features\shared\screens\support_screen.dart:296:                  });
+  lib\features\shared\screens\support_screen.dart:297:                },
+  lib\features\shared\screens\support_screen.dart:298:              );
+  lib\features\shared\screens\support_screen.dart:299:            },
+  lib\features\shared\screens\support_screen.dart:300:          ),
+  lib\features\shared\screens\support_screen.dart:301:          const SizedBox(height: 18),
+  lib\features\shared\screens\support_screen.dart:302:          DropdownButtonFormField<String>(
+  lib\features\shared\screens\support_screen.dart:303:            initialValue: _category,
+  lib\features\shared\screens\support_screen.dart:304:            decoration: const InputDecoration(
+  lib\features\shared\screens\support_screen.dart:305:              labelText: 'Ticket Type',
+  lib\features\shared\screens\support_screen.dart:306:              border: OutlineInputBorder(),
+  lib\features\shared\screens\support_screen.dart:307:            ),
+  lib\features\shared\screens\support_screen.dart:308:            items: const [
+
+

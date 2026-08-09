@@ -1,0 +1,100 @@
+warning: in the working copy of 'lib/app/app.dart', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/lib/app/app.dart b/lib/app/app.dart[m
+[1mindex 4c9f238..7e45c56 100644[m
+[1m--- a/lib/app/app.dart[m
+[1m+++ b/lib/app/app.dart[m
+[36m@@ -1,4 +1,6 @@[m
+[31m-﻿import 'package:flutter/material.dart';[m
+[32m+[m[32mimport 'package:flutter/foundation.dart';[m
+[32m+[m[32mimport 'package:flutter/material.dart';[m
+[32m+[m
+ import 'app_theme.dart';[m
+ import 'app_router.dart';[m
+ [m
+[36m@@ -13,8 +15,34 @@[m [mclass Any1SpaceApp extends StatelessWidget {[m
+       theme: AppTheme.lightTheme,[m
+       initialRoute: AppRouter.splash,[m
+       routes: AppRouter.routes,[m
+[32m+[m[32m      builder: (context, child) {[m
+[32m+[m[32m        final app = child ?? const SizedBox.shrink();[m
+[32m+[m
+[32m+[m[32m        if (!kIsWeb) {[m
+[32m+[m[32m          return app;[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        return ColoredBox([m
+[32m+[m[32m          color: AppTheme.lightTheme.scaffoldBackgroundColor,[m
+[32m+[m[32m          child: LayoutBuilder([m
+[32m+[m[32m            builder: (context, constraints) {[m
+[32m+[m[32m              final availableWidth = constraints.maxWidth;[m
+[32m+[m[32m              final contentWidth = availableWidth < 800[m
+[32m+[m[32m                  ? availableWidth[m
+[32m+[m[32m                  : 760.0;[m
+[32m+[m
+[32m+[m[32m              return Align([m
+[32m+[m[32m                alignment: Alignment.topCenter,[m
+[32m+[m[32m                child: SizedBox([m
+[32m+[m[32m                  width: contentWidth,[m
+[32m+[m[32m                  height: constraints.maxHeight,[m
+[32m+[m[32m                  child: app,[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              );[m
+[32m+[m[32m            },[m
+[32m+[m[32m          ),[m
+[32m+[m[32m        );[m
+[32m+[m[32m      },[m
+     );[m
+   }[m
+ }[m
+[31m-[m
+[31m-[m
+warning: in the working copy of 'lib/app/app.dart', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/lib/app/app.dart b/lib/app/app.dart[m
+[1mindex 4c9f238..7e45c56 100644[m
+[1m--- a/lib/app/app.dart[m
+[1m+++ b/lib/app/app.dart[m
+[36m@@ -1,4 +1,6 @@[m
+[31m-﻿import 'package:flutter/material.dart';[m
+[32m+[m[32mimport 'package:flutter/foundation.dart';[m
+[32m+[m[32mimport 'package:flutter/material.dart';[m
+[32m+[m
+ import 'app_theme.dart';[m
+ import 'app_router.dart';[m
+ [m
+[36m@@ -13,8 +15,34 @@[m [mclass Any1SpaceApp extends StatelessWidget {[m
+       theme: AppTheme.lightTheme,[m
+       initialRoute: AppRouter.splash,[m
+       routes: AppRouter.routes,[m
+[32m+[m[32m      builder: (context, child) {[m
+[32m+[m[32m        final app = child ?? const SizedBox.shrink();[m
+[32m+[m
+[32m+[m[32m        if (!kIsWeb) {[m
+[32m+[m[32m          return app;[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        return ColoredBox([m
+[32m+[m[32m          color: AppTheme.lightTheme.scaffoldBackgroundColor,[m
+[32m+[m[32m          child: LayoutBuilder([m
+[32m+[m[32m            builder: (context, constraints) {[m
+[32m+[m[32m              final availableWidth = constraints.maxWidth;[m
+[32m+[m[32m              final contentWidth = availableWidth < 800[m
+[32m+[m[32m                  ? availableWidth[m
+[32m+[m[32m                  : 760.0;[m
+[32m+[m
+[32m+[m[32m              return Align([m
+[32m+[m[32m                alignment: Alignment.topCenter,[m
+[32m+[m[32m                child: SizedBox([m
+[32m+[m[32m                  width: contentWidth,[m
+[32m+[m[32m                  height: constraints.maxHeight,[m
+[32m+[m[32m                  child: app,[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              );[m
+[32m+[m[32m            },[m
+[32m+[m[32m          ),[m
+[32m+[m[32m        );[m
+[32m+[m[32m      },[m
+     );[m
+   }[m
+ }[m
+[31m-[m
+[31m-[m
