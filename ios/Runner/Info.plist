@@ -53,6 +53,9 @@
 
         <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
         <string>Any1Space uses location services to support parking reservations, navigation, and parking session management.</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>
+
 
